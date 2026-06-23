@@ -24,6 +24,9 @@
   "dependencies": {
     "@chakra-ui/react": "^3.36.0",
     "@emotion/react": "^11.14.0",
+    "@fontsource-variable/bricolage-grotesque": "^5.2.10",
+    "@fontsource/hanken-grotesk": "^5.2.8",
+    "@fontsource/spline-sans-mono": "^5.2.8",
     "better-sqlite3": "^12.11.1",
     "electron-log": "^5.3.4",
     "lucide-react": "^1.21.0",

@@ -1,31 +1,16 @@
-import {
-  Box,
-  Button,
-  Card,
-  Container,
-  EmptyState,
-  Flex,
-  HStack,
-  Heading,
-  Icon,
-  IconButton,
-  Input,
-  Menu,
-  Portal,
-  Stack,
-  Text,
-  Tooltip
-} from '@chakra-ui/react'
+import { Box, Button, EmptyState, Flex, HStack, Icon, IconButton, Input, Menu, Portal, Stack, Text, Tooltip } from '@chakra-ui/react'
 import {
   Archive,
   ArrowRight,
+  ChevronDown,
   Circle,
   Clock3,
   ExternalLink,
+  Folder,
   FolderOpen,
-  MessageSquare,
   Mic,
   MoreHorizontal,
+  Plus,
   RotateCcw,
   Search,
   Sparkles
@@ -47,7 +32,28 @@ const noteDateFormatter = new Intl.DateTimeFormat('en', {
   hour: '2-digit',
   minute: '2-digit'
 })
+
+type Section = 'spark' | 'library'
 type RunAction = (action: () => Promise<void>, options?: { reloadNotes?: boolean }) => Promise<void>
+
+interface ProviderMeta {
+  id: ProviderId
+  label: string
+  host: string
+}
+
+const providerDefs: ProviderMeta[] = [
+  { id: 'chatgpt', label: 'ChatGPT', host: 'chatgpt.com' },
+  { id: 'grok', label: 'Grok', host: 'grok.com' }
+]
+const providerLabels: Record<ProviderId, string> = {
+  chatgpt: 'ChatGPT',
+  grok: 'Grok'
+}
+const providerColors: Record<ProviderId, { fg: string; bg: string; border: string }> = {
+  chatgpt: { fg: 'providerChatgptFg', bg: 'providerChatgptBg', border: 'providerChatgptBorder' },
+  grok: { fg: 'providerGrokFg', bg: 'providerGrokBg', border: 'providerGrokBorder' }
+}
 
 export function App(): JSX.Element {
   if (!window.adit) {
@@ -59,9 +65,9 @@ export function App(): JSX.Element {
 
 function ElectronApp(): JSX.Element {
   const [notes, setNotes] = useState<NoteRow[]>([])
+  const [section, setSection] = useState<Section>('spark')
   const [archived, setArchived] = useState(false)
   const [query, setQuery] = useState('')
-  const [providerFilter, setProviderFilter] = useState<ProviderId | null>(null)
   const [sessionState, setSessionState] = useState<SessionState>(emptyState)
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -130,78 +136,355 @@ function ElectronApp(): JSX.Element {
     return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
   }, [loadNotes])
 
-  async function runAction(action: () => Promise<void>, options: { reloadNotes?: boolean } = {}): Promise<void> {
-    setBusy(true)
-    setError(null)
+  const runAction = useCallback<RunAction>(
+    async (action, options = {}) => {
+      setBusy(true)
+      setError(null)
 
-    try {
-      await action()
-      if (options.reloadNotes) {
-        await loadNotes()
+      try {
+        await action()
+        if (options.reloadNotes) {
+          await loadNotes()
+        }
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : 'Action failed.')
+      } finally {
+        setBusy(false)
       }
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Action failed.')
-    } finally {
-      setBusy(false)
-    }
+    },
+    [loadNotes]
+  )
+
+  const createSession = useCallback(
+    (provider: ProviderId) => {
+      void runAction(async () => setSessionState(await window.adit.createSession({ provider })))
+    },
+    [runAction]
+  )
+
+  if (sessionState.mode !== 'list') {
+    return (
+      <Box minH="100vh" bg="bg" color="fg">
+        <SessionBar sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
+      </Box>
+    )
   }
 
-  const visibleNotes = providerFilter ? notes.filter((note) => note.provider === providerFilter) : notes
-
   return (
-    <Box minH="100vh" bg="bg" color="fg">
-      <TopBar sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
+    <Flex direction="column" h="100vh" bg="bg" color="fg" overflow="hidden">
+      <TitleBar />
+      <SectionTabs section={section} setSection={setSection} />
+      {section === 'spark' && (
+        <Toolbar
+          busy={busy}
+          query={query}
+          setQuery={setQuery}
+          archived={archived}
+          setArchived={setArchived}
+          onCreateSession={createSession}
+        />
+      )}
 
-      {sessionState.mode === 'list' && (
-        <Container display="flex" flexDirection="column" maxW="960px" minH="calc(100vh - 44px)" px="4" pb="4" pt="5">
-          <Stack flex="1" gap="5">
-            <NotesToolbar
-              archived={archived}
-              providerFilter={providerFilter}
-              query={query}
-              setArchived={setArchived}
-              setProviderFilter={setProviderFilter}
-              setQuery={setQuery}
-            />
-
+      <Box flex="1" overflowY="auto">
+        <Stack gap="4" p="6">
+          {(error || toast) && (
             <Stack gap="2">
               {error && <StatusNotice level="error" message={error} />}
               {toast && <StatusNotice level={toast.level} message={toast.message} />}
             </Stack>
+          )}
 
+          {section === 'library' ? (
+            <LibraryPlaceholder />
+          ) : (
             <NotesContent
               archived={archived}
               busy={busy}
               loading={loading}
-              notes={visibleNotes}
+              notes={notes}
               runAction={runAction}
               setSessionState={setSessionState}
             />
+          )}
+        </Stack>
+      </Box>
 
-            <VoiceRecommendation />
-          </Stack>
-        </Container>
-      )}
+      <FooterBar />
+    </Flex>
+  )
+}
+
+function TitleBar(): JSX.Element {
+  return (
+    <Box
+      className="app-toolbar app-region-drag"
+      flexShrink="0"
+      h="46px"
+      bg="chrome"
+      borderBottomWidth="1px"
+      borderBottomColor="chromeBorder"
+      position="relative"
+    >
+      <Text
+        color="muted"
+        fontSize="sm"
+        fontWeight="600"
+        left="50%"
+        position="absolute"
+        top="50%"
+        transform="translate(-50%, -50%)"
+      >
+        Adit
+      </Text>
     </Box>
   )
 }
 
-function VoiceRecommendation(): JSX.Element {
+interface SectionTabsProps {
+  section: Section
+  setSection: (section: Section) => void
+}
+
+function SectionTabs({ section, setSection }: SectionTabsProps): JSX.Element {
   return (
-    <HStack align="center" alignSelf="center" color="muted" gap="2.5" justify="center" mt="auto">
+    <Flex
+      flexShrink="0"
+      justify="center"
+      bg="panelHeader"
+      borderBottomWidth="1px"
+      borderBottomColor="border"
+      py="18px"
+    >
+      <HStack bg="track" borderColor="trackBorder" borderRadius="full" borderWidth="1px" gap="1.5" p="1.5" role="tablist">
+        <SectionTab icon={Sparkles} label="Spark" active={section === 'spark'} onClick={() => setSection('spark')} />
+        <SectionTab icon={Folder} label="Library" active={section === 'library'} onClick={() => setSection('library')} />
+      </HStack>
+    </Flex>
+  )
+}
+
+interface SectionTabProps {
+  icon: typeof Sparkles
+  label: string
+  active: boolean
+  onClick: () => void
+}
+
+function SectionTab({ icon, label, active, onClick }: SectionTabProps): JSX.Element {
+  return (
+    <Button
+      role="tab"
+      aria-selected={active}
+      bg={active ? 'trackActive' : 'transparent'}
+      borderColor={active ? 'border' : 'transparent'}
+      borderRadius="full"
+      borderWidth="1px"
+      color={active ? 'fg' : 'faint'}
+      fontSize="sm"
+      fontWeight={active ? '700' : '600'}
+      gap="2"
+      h="9"
+      minW="148px"
+      onClick={onClick}
+      px="6"
+      shadow={active ? 'trackActive' : 'none'}
+      variant="plain"
+      _hover={{ color: active ? 'fg' : 'fgSoft' }}
+    >
+      <Icon as={icon} boxSize="3.5" color={active ? 'accent' : 'currentColor'} />
+      <Text as="span">{label}</Text>
+    </Button>
+  )
+}
+
+interface ToolbarProps {
+  busy: boolean
+  query: string
+  setQuery: (value: string) => void
+  archived: boolean
+  setArchived: (value: boolean) => void
+  onCreateSession: (provider: ProviderId) => void
+}
+
+function Toolbar({ busy, query, setQuery, archived, setArchived, onCreateSession }: ToolbarProps): JSX.Element {
+  return (
+    <Flex
+      align="center"
+      flexShrink="0"
+      gap="4"
+      justify="space-between"
+      px="5"
+      py="4"
+      borderBottomWidth="1px"
+      borderBottomColor="border"
+    >
+      <Box position="relative" flex="1" maxW="440px">
+        <Icon as={Search} boxSize="4" color="faint" left="3.5" pointerEvents="none" position="absolute" top="50%" transform="translateY(-50%)" zIndex="1" />
+        <Input
+          bg="cardBg"
+          borderColor="border"
+          borderRadius="9px"
+          color="fg"
+          fontSize="sm"
+          fontWeight="500"
+          h="38px"
+          pl="9"
+          placeholder="Search titles"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          _placeholder={{ color: 'faint' }}
+          _focus={{ bg: 'cardBg', borderColor: 'focusRing' }}
+        />
+      </Box>
+
+      <HStack gap="2.5">
+        <NewSessionSplit busy={busy} onCreateSession={onCreateSession} />
+        <Box bg="border" h="22px" w="1px" />
+        <Button
+          aria-pressed={archived}
+          bg={archived ? 'accent' : 'panelHeader'}
+          borderColor={archived ? 'accent' : 'border'}
+          borderRadius="9px"
+          borderWidth="1px"
+          color={archived ? 'accentOn' : 'muted'}
+          fontSize="13px"
+          fontWeight="600"
+          h="38px"
+          onClick={() => setArchived(!archived)}
+          px="4"
+          variant="plain"
+          _hover={{ bg: archived ? 'accentHover' : 'track', color: archived ? 'accentOn' : 'fgSoft' }}
+        >
+          Archive
+        </Button>
+      </HStack>
+    </Flex>
+  )
+}
+
+interface NewSessionSplitProps {
+  busy: boolean
+  onCreateSession: (provider: ProviderId) => void
+}
+
+function NewSessionSplit({ busy, onCreateSession }: NewSessionSplitProps): JSX.Element {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const primary = providerDefs[0]
+
+  return (
+    <Flex
+      align="stretch"
+      h="38px"
+      borderRadius="9px"
+      overflow="hidden"
+      shadow="primaryButton"
+      opacity={busy ? 0.6 : 1}
+      pointerEvents={busy ? 'none' : 'auto'}
+    >
+      <Flex
+        as="button"
+        appearance="none"
+        border="0"
+        align="center"
+        h="38px"
+        lineHeight="1"
+        bg="accent"
+        color="accentOn"
+        cursor="pointer"
+        gap="1.5"
+        fontSize="13px"
+        fontWeight="600"
+        pl="3.5"
+        pr="3"
+        onClick={() => onCreateSession(primary.id)}
+        _hover={{ bg: 'accentHover' }}
+      >
+        <Icon as={Plus} boxSize="4" />
+        <Text as="span">New {primary.label}</Text>
+      </Flex>
+      <Menu.Root open={menuOpen} onOpenChange={(details) => setMenuOpen(details.open)} positioning={{ placement: 'bottom-end' }}>
+        <Menu.Trigger asChild>
+          <Flex
+            as="button"
+            appearance="none"
+            border="0"
+            aria-label="Choose a provider"
+            align="center"
+            justify="center"
+            h="38px"
+            bg="accent"
+            borderLeftColor="rgba(255,255,255,0.22)"
+            borderLeftWidth="1px"
+            borderLeftStyle="solid"
+            color="accentOn"
+            cursor="pointer"
+            px="2.5"
+            _hover={{ bg: 'accentHover' }}
+          >
+            <Icon
+              as={ChevronDown}
+              boxSize="3.5"
+              transform={menuOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
+              transition="transform 160ms ease"
+            />
+          </Flex>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner>
+            <Menu.Content bg="cardBg" borderColor="borderStrong" borderRadius="11px" borderWidth="1px" minW="220px" p="1.5" shadow="menu">
+              <Text color="faint" fontSize="2xs" fontWeight="700" letterSpacing="0.1em" px="2.5" py="1.5" textTransform="uppercase">
+                Start a session
+              </Text>
+              {providerDefs.map((provider) => {
+                const colors = providerColors[provider.id]
+                return (
+                  <Menu.Item
+                    key={provider.id}
+                    value={provider.id}
+                    borderRadius="7px"
+                    gap="2.5"
+                    px="2.5"
+                    py="2"
+                    onClick={() => onCreateSession(provider.id)}
+                  >
+                    <Flex align="center" justify="center" bg={colors.bg} borderRadius="6px" boxSize="6" color={colors.fg}>
+                      <Icon as={Sparkles} boxSize="3.5" />
+                    </Flex>
+                    <Text flex="1" fontSize="sm" fontWeight="600" color="fg">
+                      {provider.label}
+                    </Text>
+                    <Text color="faint" fontFamily="mono" fontSize="2xs">
+                      {provider.host}
+                    </Text>
+                  </Menu.Item>
+                )
+              })}
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
+    </Flex>
+  )
+}
+
+function FooterBar(): JSX.Element {
+  return (
+    <HStack
+      flexShrink="0"
+      align="center"
+      justify="center"
+      gap="2.5"
+      px="5"
+      py="5"
+      borderTopWidth="1px"
+      borderTopColor="border"
+      color="muted"
+    >
       <Icon as={Mic} boxSize="3.5" flexShrink="0" />
-      <Text fontSize="xs" fontWeight="600">
+      <Text fontSize="xs" fontWeight="500">
         Adit works best when you speak to your AI instead of typing.
       </Text>
-      <Button
-        asChild
-        color="actionFg"
-        fontSize="xs"
-        h="6"
-        px="2"
-        variant="ghost"
-        _hover={{ bg: 'actionHoverBg', color: 'fg' }}
-      >
+      <Button asChild color="accent" fontSize="xs" fontWeight="600" h="6" px="1.5" variant="ghost" _hover={{ bg: 'track' }}>
         <a href={repositoryUrl} rel="noreferrer" target="_blank">
           GitHub
           <Icon as={ExternalLink} boxSize="3" />
@@ -211,15 +494,14 @@ function VoiceRecommendation(): JSX.Element {
   )
 }
 
-interface TopBarProps {
+interface SessionBarProps {
   sessionState: SessionState
   runAction: RunAction
   setSessionState: (state: SessionState) => void
 }
 
-function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.Element {
-  const inSession = sessionState.mode !== 'list'
-  const providerLabel = sessionState.provider === 'chatgpt' ? 'ChatGPT' : 'Grok'
+function SessionBar({ sessionState, runAction, setSessionState }: SessionBarProps): JSX.Element {
+  const providerLabel = sessionState.provider ? providerLabels[sessionState.provider] : ''
   const backTooltip = sessionState.sessionUrl
     ? "Leaving this view won't interrupt the current reply."
     : 'Adit saves this session after its conversation URL is created.'
@@ -227,21 +509,20 @@ function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.
   return (
     <Box
       as="header"
-      bg={inSession ? 'sessionHeaderBg' : 'headerBg'}
+      bg="chrome"
       borderBottomWidth="1px"
-      borderColor={inSession ? 'sessionHeaderBorder' : 'headerBorder'}
+      borderColor="chromeBorder"
       className="app-toolbar app-region-drag"
       color="fg"
-      h="44px"
+      h="46px"
       position="relative"
       zIndex="10"
-      backdropBlur="lg"
     >
       <Flex align="center" h="full" justify="flex-end" px="4" position="relative">
         <Text
-          color="headerMuted"
+          color="muted"
           fontSize="sm"
-          fontWeight="700"
+          fontWeight="600"
           left="50%"
           position="absolute"
           top="50%"
@@ -249,150 +530,43 @@ function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.
         >
           Adit
         </Text>
-        {sessionState.mode !== 'list' && (
-          <HStack className="app-region-no-drag" gap="3">
-            <HStack color={sessionState.sessionUrl ? 'capturedFg' : 'waitingFg'} gap="1.5">
-              <Icon as={Circle} boxSize="2" fill="currentColor" />
-              <Text fontSize="xs" fontWeight="600">
-                {sessionState.sessionUrl ? 'Captured' : 'Waiting'}
-              </Text>
-            </HStack>
-            <Text
-              color="sessionHeaderMuted"
-              fontSize="xs"
-              maxW="360px"
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
-            >
-              {providerLabel}
+        <HStack className="app-region-no-drag" gap="3">
+          <HStack color={sessionState.sessionUrl ? 'capturedFg' : 'waitingFg'} gap="1.5">
+            <Icon as={Circle} boxSize="2" fill="currentColor" />
+            <Text fontSize="xs" fontWeight="600">
+              {sessionState.sessionUrl ? 'Captured' : 'Waiting'}
             </Text>
-            <Tooltip.Root openDelay={350} closeDelay={100} positioning={{ placement: 'bottom-end' }}>
-              <Tooltip.Trigger asChild>
-                <Button
-                  bg="sessionActionBg"
-                  borderRadius="md"
-                  color="sessionActionFg"
-                  fontSize="xs"
-                  h="8"
-                  onClick={() => {
-                    void runAction(async () => setSessionState(await window.adit.closeSession()))
-                  }}
-                  px="3"
-                  _hover={{ bg: 'sessionActionHover' }}
-                >
-                  Back
-                </Button>
-              </Tooltip.Trigger>
-              <Portal>
-                <Tooltip.Positioner>
-                  <Tooltip.Content>{backTooltip}</Tooltip.Content>
-                </Tooltip.Positioner>
-              </Portal>
-            </Tooltip.Root>
           </HStack>
-        )}
+          <Text color="muted" fontSize="xs" maxW="360px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+            {providerLabel}
+          </Text>
+          <Tooltip.Root openDelay={350} closeDelay={100} positioning={{ placement: 'bottom-end' }}>
+            <Tooltip.Trigger asChild>
+              <Button
+                bg="accent"
+                borderRadius="9px"
+                color="accentOn"
+                fontSize="xs"
+                fontWeight="600"
+                h="8"
+                onClick={() => {
+                  void runAction(async () => setSessionState(await window.adit.closeSession()))
+                }}
+                px="3.5"
+                _hover={{ bg: 'accentHover' }}
+              >
+                Back
+              </Button>
+            </Tooltip.Trigger>
+            <Portal>
+              <Tooltip.Positioner>
+                <Tooltip.Content>{backTooltip}</Tooltip.Content>
+              </Tooltip.Positioner>
+            </Portal>
+          </Tooltip.Root>
+        </HStack>
       </Flex>
     </Box>
-  )
-}
-
-interface NotesToolbarProps {
-  archived: boolean
-  providerFilter: ProviderId | null
-  query: string
-  setArchived: (value: boolean) => void
-  setProviderFilter: (value: ProviderId | null) => void
-  setQuery: (value: string) => void
-}
-
-function NotesToolbar({
-  archived,
-  providerFilter,
-  query,
-  setArchived,
-  setProviderFilter,
-  setQuery
-}: NotesToolbarProps): JSX.Element {
-  const providerButtonProps = {
-    borderWidth: '1px',
-    fontSize: '2xs',
-    fontWeight: '700',
-    h: '7',
-    minW: '72px',
-    px: '2.5',
-    variant: 'plain' as const
-  }
-
-  return (
-    <Flex align="center" gap="3" justify="space-between">
-      <HStack flex="1" gap="2" minW="0">
-        <HStack flex="1" maxW="380px" minW="240px" position="relative">
-          <Icon as={Search} boxSize="4" color="muted" left="3" pointerEvents="none" position="absolute" zIndex="1" />
-          <Input
-            bg="panelMuted"
-            borderColor="transparent"
-            borderRadius="md"
-            fontSize="sm"
-            h="8"
-            _focus={{ bg: 'panel', borderColor: 'focusRing' }}
-            onChange={(event) => setQuery(event.target.value)}
-            pl="9"
-            placeholder="Search titles"
-            value={query}
-          />
-        </HStack>
-        <HStack bg="panelMuted" borderColor="border" borderRadius="md" borderWidth="1px" gap="0.5" h="8" p="0.5">
-          <Button
-            aria-pressed={providerFilter === 'chatgpt'}
-            bg={providerFilter === 'chatgpt' ? 'accent' : 'transparent'}
-            borderColor={providerFilter === 'chatgpt' ? 'accent' : 'transparent'}
-            color={providerFilter === 'chatgpt' ? 'accentOn' : 'muted'}
-            onClick={() => setProviderFilter(providerFilter === 'chatgpt' ? null : 'chatgpt')}
-            _hover={{
-              bg: providerFilter === 'chatgpt' ? 'accentHover' : 'actionHoverBg',
-              color: providerFilter === 'chatgpt' ? 'accentOn' : 'fg'
-            }}
-            {...providerButtonProps}
-          >
-            ChatGPT
-          </Button>
-          <Button
-            aria-pressed={providerFilter === 'grok'}
-            bg={providerFilter === 'grok' ? 'accent' : 'transparent'}
-            borderColor={providerFilter === 'grok' ? 'accent' : 'transparent'}
-            color={providerFilter === 'grok' ? 'accentOn' : 'muted'}
-            onClick={() => setProviderFilter(providerFilter === 'grok' ? null : 'grok')}
-            _hover={{
-              bg: providerFilter === 'grok' ? 'accentHover' : 'actionHoverBg',
-              color: providerFilter === 'grok' ? 'accentOn' : 'fg'
-            }}
-            {...providerButtonProps}
-          >
-            Grok
-          </Button>
-        </HStack>
-      </HStack>
-
-      <Button
-        aria-pressed={archived}
-        bg={archived ? 'accent' : 'panelMuted'}
-        borderColor={archived ? 'accent' : 'border'}
-        borderRadius="md"
-        borderWidth="1px"
-        color={archived ? 'accentOn' : 'actionFg'}
-        fontSize="xs"
-        fontWeight="700"
-        h="8"
-        minW="72px"
-        onClick={() => setArchived(!archived)}
-        px="3"
-        variant="plain"
-        _hover={{ bg: archived ? 'accentHover' : 'actionHoverBg', color: archived ? 'accentOn' : 'fg' }}
-      >
-        Archive
-      </Button>
-    </Flex>
   )
 }
 
@@ -410,22 +584,25 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
     return <AditEmptyState description="Loading local session entrances..." icon={<Sparkles />} title="Loading notes" />
   }
 
+  if (notes.length === 0) {
+    return (
+      <AditEmptyState
+        description={
+          archived
+            ? 'Archived Sparks will show up here once you archive one.'
+            : 'Start a new Spark or adjust the current filters.'
+        }
+        icon={archived ? <Archive /> : <Sparkles />}
+        title={archived ? 'No archived Sparks' : 'No Sparks yet'}
+      />
+    )
+  }
+
   return (
-    <Box
-      as="ul"
-      display="grid"
-      gap="4"
-      gridTemplateColumns="repeat(auto-fill, minmax(176px, 1fr))"
-      listStyle="none"
-      m="0"
-      p="0"
-    >
-      <Box as="li">
-        <NewSessionCard busy={busy} runAction={runAction} setSessionState={setSessionState} />
-      </Box>
+    <Box as="ul" display="grid" gap="4" gridTemplateColumns="repeat(4, minmax(0, 1fr))" listStyle="none" m="0" p="0">
       {notes.map((note) => (
-        <Box as="li" key={note.id}>
-          <NoteCard
+        <Box as="li" key={note.id} display="flex">
+          <PaperCard
             archived={archived}
             busy={busy}
             note={note}
@@ -451,77 +628,7 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
   )
 }
 
-interface NewSessionCardProps {
-  busy: boolean
-  runAction: RunAction
-  setSessionState: (state: SessionState) => void
-}
-
-function NewSessionCard({ busy, runAction, setSessionState }: NewSessionCardProps): JSX.Element {
-  return (
-    <Card.Root
-      aspectRatio="1.32"
-      bg="panel"
-      borderColor="border"
-      borderRadius="panel"
-      shadow="card"
-      size="sm"
-      transition="border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease"
-      variant="outline"
-      _hover={{
-        bg: 'cardHoverBg',
-        borderColor: 'accent',
-        shadow: 'cardHover',
-        transform: 'translateY(-2px)'
-      }}
-    >
-      <Card.Body alignItems="center" display="flex" justifyContent="center" p="3">
-        <Stack gap="2" maxW="240px" w="full">
-          <Button
-            bg="sessionActionBg"
-            borderRadius="md"
-            color="sessionActionFg"
-            disabled={busy}
-            fontSize="xs"
-            fontWeight="700"
-            h="8"
-            onClick={() => {
-              void runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))
-            }}
-            px="3"
-            _hover={{ bg: 'sessionActionHover' }}
-          >
-            <Icon as={MessageSquare} boxSize="4" />
-            New ChatGPT
-          </Button>
-          <Button
-            bg="panelMuted"
-            borderColor="actionBorder"
-            borderRadius="md"
-            borderWidth="1px"
-            color="actionFg"
-            disabled={busy}
-            fontSize="xs"
-            fontWeight="700"
-            h="8"
-            onClick={() => {
-              void runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))
-            }}
-            px="3"
-            variant="plain"
-            _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
-            _hover={{ bg: 'actionHoverBg' }}
-          >
-            <Icon as={Sparkles} boxSize="4" />
-            New Grok
-          </Button>
-        </Stack>
-      </Card.Body>
-    </Card.Root>
-  )
-}
-
-interface NoteCardProps {
+interface PaperCardProps {
   archived: boolean
   busy: boolean
   note: NoteRow
@@ -529,106 +636,97 @@ interface NoteCardProps {
   onOpen: () => void
 }
 
-function NoteCard({ archived, busy, note, onArchive, onOpen }: NoteCardProps): JSX.Element {
+function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <Card.Root
+    <Flex
       aria-label={`Open ${note.title}`}
-      aspectRatio="1.32"
+      role="button"
+      tabIndex={0}
+      direction="column"
+      justify="space-between"
+      gap="18px"
+      minH="188px"
+      w="full"
+      position="relative"
+      px="22px"
+      py="20px"
       bg="cardBg"
       borderColor="border"
-      borderRadius="panel"
+      borderRadius="card"
+      borderWidth="1px"
       cursor="pointer"
+      shadow="card"
+      transition="transform 170ms cubic-bezier(.2,.7,.3,1), box-shadow 170ms ease, border-color 170ms ease, background 170ms ease"
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) {
           return
         }
-
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           onOpen()
         }
       }}
-      overflow="hidden"
-      position="relative"
-      role="button"
-      shadow="card"
-      size="sm"
-      tabIndex={0}
-      transition="border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease"
-      variant="outline"
       _focusVisible={{ borderColor: 'focusRing', outline: 'none', shadow: 'focus' }}
-      _focusWithin={{
-        '& [data-note-actions]': {
-          opacity: 1,
-          pointerEvents: 'auto'
-        }
-      }}
+      _focusWithin={{ '& [data-card-actions]': { opacity: 1, pointerEvents: 'auto' } }}
       _hover={{
         bg: 'cardHoverBg',
-        borderColor: 'accent',
+        borderColor: 'borderStrong',
         shadow: 'cardHover',
-        transform: 'translateY(-2px)',
-        '& [data-note-actions]': {
-          opacity: 1,
-          pointerEvents: 'auto'
-        }
+        transform: 'translateY(-3px)',
+        '& [data-card-actions]': { opacity: 1, pointerEvents: 'auto' }
       }}
     >
-      <ProviderRibbon provider={note.provider} />
-      <Card.Body p="3">
-        <Stack gap="2.5" h="full" justify="space-between" minW="0">
-          <Heading lineClamp="2" minW="0" overflow="hidden" pl="10" pr="8" textStyle="headline">
-            {note.title}
-          </Heading>
+      <Stack gap="3.5" minW="0">
+        <ProviderPill provider={note.provider} />
+        <Text textStyle="cardTitle" color="fg" lineClamp="2" minW="0" overflow="hidden">
+          {note.title}
+        </Text>
+        <Text color="muted" fontSize="13px" fontWeight="500" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+          {formatSessionHost(note.session_url)}
+        </Text>
+      </Stack>
 
-          <Stack gap="1" minW="0">
-            <Text color="muted" overflow="hidden" textOverflow="ellipsis" textStyle="caption" whiteSpace="nowrap">
-              {formatSessionHost(note.session_url)}
+      <Stack gap="3">
+        <Box bg="border" h="1px" />
+        <Flex align="center" justify="space-between">
+          <HStack color="faint" gap="1.5" minW="0">
+            <Icon as={Clock3} boxSize="3.5" />
+            <Text fontSize="12.5px" fontWeight="500" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+              {formatDate(note.updated_at)}
             </Text>
-          </Stack>
+          </HStack>
+          <HStack color="accent" flexShrink="0" gap="1.5">
+            <Text fontSize="13px" fontWeight="600">
+              Open
+            </Text>
+            <Icon as={ArrowRight} boxSize="3.5" />
+          </HStack>
+        </Flex>
+      </Stack>
 
-          <Box borderTopColor="border" borderTopWidth="1px" />
-
-          <Flex align="center" color="muted" gap="2" justify="space-between" minW="0">
-            <HStack gap="1.5" minW="0">
-              <Icon as={Clock3} boxSize="3" />
-              <Text overflow="hidden" textOverflow="ellipsis" textStyle="caption" whiteSpace="nowrap">
-                {formatDate(note.updated_at)}
-              </Text>
-            </HStack>
-            <HStack color="accent" flexShrink="0" gap="1">
-              <Text fontSize="xs" fontWeight="700">
-                Open
-              </Text>
-              <Icon as={ArrowRight} boxSize="3" />
-            </HStack>
-          </Flex>
-        </Stack>
-      </Card.Body>
       <Box
-        data-note-actions=""
+        data-card-actions=""
         opacity={menuOpen ? 1 : 0}
         pointerEvents={menuOpen ? 'auto' : 'none'}
         position="absolute"
-        right="2"
-        top="2"
+        right="2.5"
+        top="2.5"
         transition="opacity 120ms ease"
       >
         <Menu.Root onOpenChange={(details) => setMenuOpen(details.open)} positioning={{ placement: 'bottom-end' }}>
           <Menu.Trigger asChild>
             <IconButton
               aria-label="Note actions"
-              color="muted"
+              color="faint"
               disabled={busy}
               minW="6"
               onClick={(event) => event.stopPropagation()}
               size="2xs"
               variant="ghost"
-              _disabled={{ color: 'actionDisabledFg', opacity: 1 }}
-              _hover={{ bg: 'actionHoverBg', color: 'fg' }}
+              _hover={{ bg: 'track', color: 'fg' }}
             >
               <Icon as={MoreHorizontal} boxSize="3.5" />
             </IconButton>
@@ -636,122 +734,129 @@ function NoteCard({ archived, busy, note, onArchive, onOpen }: NoteCardProps): J
           <Portal>
             <Menu.Positioner>
               <Menu.Content
-                bg="panel"
-                borderColor="border"
-                borderRadius="panel"
+                bg="cardBg"
+                borderColor="borderStrong"
+                borderRadius="11px"
+                borderWidth="1px"
                 minW="140px"
-                p="1"
-                shadow="cardHover"
+                p="1.5"
+                shadow="menu"
                 onClick={(event) => event.stopPropagation()}
               >
                 <Menu.Item
                   value={archived ? 'restore' : 'archive'}
+                  borderRadius="7px"
+                  gap="2"
                   onClick={(event) => {
                     event.stopPropagation()
                     onArchive()
                   }}
                 >
                   <Icon as={archived ? RotateCcw : Archive} boxSize="3.5" />
-                  <Text textStyle="caption">{archived ? 'Restore' : 'Archive'}</Text>
+                  <Text fontSize="sm">{archived ? 'Restore' : 'Archive'}</Text>
                 </Menu.Item>
               </Menu.Content>
             </Menu.Positioner>
           </Portal>
         </Menu.Root>
       </Box>
-    </Card.Root>
+    </Flex>
   )
 }
 
-function ProviderRibbon({ provider }: { provider: ProviderId }): JSX.Element {
-  const isChatGPT = provider === 'chatgpt'
+function ProviderPill({ provider }: { provider: ProviderId }): JSX.Element {
+  const colors = providerColors[provider]
 
   return (
-    <Box h="14" left="0" overflow="hidden" pointerEvents="none" position="absolute" top="0" w="14" zIndex="1">
-      <Box
-        bg={isChatGPT ? 'providerChatgptBg' : 'providerGrokBg'}
-        borderColor={isChatGPT ? 'providerChatgptBorder' : 'providerGrokBorder'}
-        borderWidth="1px"
-        color={isChatGPT ? 'providerChatgptFg' : 'providerGrokFg'}
-        fontSize="2xs"
-        fontWeight="700"
-        left="-8"
-        letterSpacing="0"
-        lineHeight="1"
-        position="absolute"
-        py="1"
-        textAlign="center"
-        top="3"
-        transform="rotate(-45deg)"
-        transformOrigin="center"
-        w="24"
-      >
-        {isChatGPT ? 'ChatGPT' : 'Grok'}
-      </Box>
-    </Box>
+    <HStack
+      alignSelf="flex-start"
+      bg={colors.bg}
+      borderColor={colors.border}
+      borderRadius="full"
+      borderWidth="1px"
+      color={colors.fg}
+      gap="1.5"
+      pl="2"
+      pr="2.5"
+      py="1"
+    >
+      <Box bg={colors.fg} borderRadius="full" boxSize="1.5" />
+      <Text fontSize="11px" fontWeight="600" letterSpacing="0.03em">
+        {providerLabels[provider]}
+      </Text>
+    </HStack>
   )
 }
 
-function AditEmptyState({
-  description,
-  icon,
-  title
-}: {
-  description: string
-  icon: JSX.Element
-  title: string
-}): JSX.Element {
+function LibraryPlaceholder(): JSX.Element {
   return (
-    <Card.Root bg="panel" borderColor="border" borderRadius="panel" minH="280px" variant="outline">
-      <Card.Body>
-        <EmptyState.Root size="md">
-          <EmptyState.Content>
-            <EmptyState.Indicator>
-              <Icon color="accent" boxSize="5">
-                {icon}
-              </Icon>
-            </EmptyState.Indicator>
-            <Stack gap="1" textAlign="center">
-              <EmptyState.Title fontSize="md">{title}</EmptyState.Title>
-              <EmptyState.Description fontSize="sm" maxW="360px">
-                {description}
-              </EmptyState.Description>
-            </Stack>
-          </EmptyState.Content>
-        </EmptyState.Root>
-      </Card.Body>
-    </Card.Root>
+    <AditEmptyState
+      description="Library is where your saved AI notes will live. Soon you'll be able to keep the results worth keeping from any Spark — summaries, documents, images, and code — without reopening the provider."
+      icon={<Folder />}
+      title="Your Library is coming"
+    />
+  )
+}
+
+function AditEmptyState({ description, icon, title }: { description: string; icon: JSX.Element; title: string }): JSX.Element {
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      bg="panel"
+      borderColor="border"
+      borderRadius="panel"
+      borderWidth="1px"
+      minH="300px"
+    >
+      <EmptyState.Root size="md">
+        <EmptyState.Content>
+          <EmptyState.Indicator>
+            <Icon color="accent" boxSize="6">
+              {icon}
+            </Icon>
+          </EmptyState.Indicator>
+          <Stack gap="1.5" textAlign="center">
+            <EmptyState.Title fontSize="md" fontWeight="700">
+              {title}
+            </EmptyState.Title>
+            <EmptyState.Description color="muted" fontSize="sm" maxW="380px">
+              {description}
+            </EmptyState.Description>
+          </Stack>
+        </EmptyState.Content>
+      </EmptyState.Root>
+    </Flex>
   )
 }
 
 function StatusNotice({ level, message }: ToastMessage): JSX.Element {
   return (
-    <Card.Root
+    <Box
       bg={level === 'error' ? 'errorBg' : 'infoBg'}
       borderColor={level === 'error' ? 'errorBorder' : 'infoBorder'}
       borderRadius="panel"
+      borderWidth="1px"
       color={level === 'error' ? 'errorFg' : 'infoFg'}
-      size="sm"
-      variant="outline"
+      px="3.5"
+      py="2"
     >
-      <Card.Body py="1.5">
-        <Text fontSize="xs">{message}</Text>
-      </Card.Body>
-    </Card.Root>
+      <Text fontSize="xs">{message}</Text>
+    </Box>
   )
 }
 
 function StandaloneNotice(): JSX.Element {
   return (
     <Box minH="100vh" bg="bg">
-      <TopBar runAction={() => Promise.resolve()} sessionState={emptyState} setSessionState={() => undefined} />
-      <Container maxW="960px" py="5">
+      <Box className="app-region-drag" h="46px" bg="chrome" borderBottomWidth="1px" borderBottomColor="chromeBorder" />
+      <Box maxW="560px" mx="auto" px="6" py="6">
         <AditEmptyState
           description="The browser renderer is only a shell. SQLite, session capture, and provider windows run through Electron."
           icon={<FolderOpen />}
           title="Open Adit in Electron"
         />
-      </Container>
+      </Box>
     </Box>
   )
 }

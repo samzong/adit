@@ -1,5 +1,9 @@
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
 
+const hankenStack = "'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+const bricolageStack = "'Bricolage Grotesque', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+const splineMonoStack = "'Spline Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace"
+
 const config = defineConfig({
   globalCss: {
     '*': {
@@ -20,6 +24,7 @@ const config = defineConfig({
     body: {
       color: 'fg',
       bg: 'bg',
+      fontFamily: 'body',
       colorScheme: 'inherit'
     },
     '.app-toolbar': {
@@ -29,93 +34,104 @@ const config = defineConfig({
   theme: {
     tokens: {
       fonts: {
-        heading: {
-          value: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-        },
-        body: { value: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }
-      },
-      colors: {
-        adit: {
-          50: { value: '#f2f4f2' },
-          100: { value: '#e4e8e5' },
-          200: { value: '#cbd3cf' },
-          300: { value: '#aebbb5' },
-          400: { value: '#8f9f98' },
-          500: { value: '#6f8179' },
-          600: { value: '#5b6b64' },
-          700: { value: '#46524d' },
-          800: { value: '#303a36' },
-          900: { value: '#202824' }
-        }
+        heading: { value: hankenStack },
+        body: { value: hankenStack },
+        display: { value: bricolageStack },
+        mono: { value: splineMonoStack }
       },
       radii: {
-        panel: { value: '10px' }
+        panel: { value: '11px' },
+        card: { value: '14px' }
       }
     },
     textStyles: {
+      cardTitle: {
+        value: {
+          fontFamily: 'display',
+          fontSize: '19px',
+          fontWeight: '600',
+          lineHeight: '1.22',
+          letterSpacing: '-0.012em'
+        }
+      },
       headline: {
         value: {
           fontSize: 'sm',
           fontWeight: '700',
-          lineHeight: '1.25',
+          lineHeight: '1.3',
           letterSpacing: '0'
         }
       },
       caption: {
         value: {
-          fontSize: 'xs',
-          lineHeight: '1.3',
+          fontSize: '13px',
+          fontWeight: '500',
+          lineHeight: '1.35',
           letterSpacing: '0'
         }
       }
     },
     semanticTokens: {
       colors: {
-        bg: { value: { base: '#f5f5f3', _dark: '#111315' } },
-        panel: { value: { base: '#fbfbf9', _dark: '#191b1f' } },
-        panelMuted: { value: { base: '#eceeeb', _dark: '#22262b' } },
-        cardBg: { value: { base: '#fafaf8', _dark: '#1b1e22' } },
-        cardHoverBg: { value: { base: '#ffffff', _dark: '#20242a' } },
-        fg: { value: { base: '#1c1f1d', _dark: '#f1f2ef' } },
-        muted: { value: { base: '#6f7572', _dark: '#8f969b' } },
-        border: { value: { base: '#dedfda', _dark: '#2b3036' } },
-        accent: { value: { base: '{colors.adit.600}', _dark: '{colors.adit.300}' } },
-        accentOn: { value: { base: '#fbfbf9', _dark: '#111315' } },
-        accentHover: { value: { base: '{colors.adit.700}', _dark: '{colors.adit.200}' } },
-        providerChatgptBg: { value: { base: '#e5ede8', _dark: '#25302c' } },
-        providerChatgptFg: { value: { base: '#40554b', _dark: '#bac9c1' } },
-        providerChatgptBorder: { value: { base: '#cbd8d1', _dark: '#34443d' } },
-        providerGrokBg: { value: { base: '#ebe8ef', _dark: '#2b2832' } },
-        providerGrokFg: { value: { base: '#51475e', _dark: '#c9bfd5' } },
-        providerGrokBorder: { value: { base: '#d8d1df', _dark: '#3d3649' } },
-        actionFg: { value: { base: '#2f3431', _dark: '#d7dbd7' } },
-        actionBorder: { value: { base: '#d6d8d3', _dark: '#373d43' } },
-        actionHoverBg: { value: { base: '#ebede9', _dark: '#272c31' } },
-        actionDisabledFg: { value: { base: '#a3a8a4', _dark: '#686f75' } },
-        actionDisabledBorder: { value: { base: '#e4e5e0', _dark: '#30363b' } },
-        headerBg: { value: { base: 'rgba(250, 250, 248, 0.92)', _dark: 'rgba(20, 22, 25, 0.92)' } },
-        headerBorder: { value: { base: '#dddfda', _dark: '#2b3036' } },
-        headerMuted: { value: { base: '#777d79', _dark: '#8f969b' } },
-        sessionHeaderBg: { value: { base: 'rgba(250, 250, 248, 0.92)', _dark: 'rgba(17, 19, 21, 0.94)' } },
-        sessionHeaderBorder: { value: { base: '#dddfda', _dark: '#2b3036' } },
-        sessionHeaderMuted: { value: { base: '#777d79', _dark: '#9ba1a5' } },
-        sessionActionBg: { value: { base: '#252a27', _dark: '#dfe4df' } },
-        sessionActionFg: { value: { base: '#fbfbf9', _dark: '#171a1d' } },
-        sessionActionHover: { value: { base: '#333933', _dark: '#cbd3cf' } },
-        capturedFg: { value: { base: '{colors.adit.600}', _dark: '{colors.adit.300}' } },
+        bg: { value: { base: '#f7f6f3', _dark: '#232220' } },
+        chrome: { value: { base: '#edebe6', _dark: '#2b2926' } },
+        chromeBorder: { value: { base: '#dcd9d1', _dark: '#383530' } },
+        panel: { value: { base: '#f7f6f3', _dark: '#211f1d' } },
+        panelHeader: { value: { base: '#f1efea', _dark: '#272522' } },
+        cardBg: { value: { base: '#fdfdfb', _dark: '#2a2825' } },
+        cardHoverBg: { value: { base: '#ffffff', _dark: '#322f2b' } },
+
+        fg: { value: { base: '#26241f', _dark: '#f0eee8' } },
+        fgSoft: { value: { base: '#403d36', _dark: '#dcd8d0' } },
+        muted: { value: { base: '#827d72', _dark: '#9b958a' } },
+        faint: { value: { base: '#a6a195', _dark: '#6e695f' } },
+        label: { value: { base: '#6f6a5f', _dark: '#9b958a' } },
+        border: { value: { base: '#e5e2da', _dark: '#383530' } },
+        borderStrong: { value: { base: '#d6d2c8', _dark: '#494540' } },
+
+        accent: { value: { base: '#b06440', _dark: '#d18a5e' } },
+        accentHover: { value: { base: '#9c5635', _dark: '#c47d52' } },
+        accentOn: { value: '#ffffff' },
+
+        track: { value: { base: '#e7e4dd', _dark: '#242220' } },
+        trackBorder: { value: { base: '#dcd9d1', _dark: '#383530' } },
+        trackActive: { value: { base: '#fdfdfb', _dark: '#322f2b' } },
+
+        providerChatgptFg: { value: { base: '#5e7050', _dark: '#a3b48e' } },
+        providerChatgptBg: { value: { base: '#e8ece0', _dark: '#242a1b' } },
+        providerChatgptBorder: { value: { base: '#d4dcc8', _dark: '#39402c' } },
+        providerGrokFg: { value: { base: '#a85936', _dark: '#d08a63' } },
+        providerGrokBg: { value: { base: '#f1e6dd', _dark: '#2e2317' } },
+        providerGrokBorder: { value: { base: '#e3cfbf', _dark: '#463524' } },
+
+        capturedFg: { value: { base: '#5a8a4a', _dark: '#7bb368' } },
         waitingFg: { value: { base: '#8d743d', _dark: '#c3aa72' } },
-        infoBg: { value: { base: '#eef2ef', _dark: '#1c2522' } },
-        infoBorder: { value: { base: '#cbd3cf', _dark: '#3b4843' } },
-        infoFg: { value: { base: '#46524d', _dark: '#cbd3cf' } },
-        errorBg: { value: { base: '#fff1f1', _dark: '#341719' } },
-        errorBorder: { value: { base: '#ffc9c9', _dark: '#7f3035' } },
-        errorFg: { value: { base: '#7a1e24', _dark: '#ffd2d5' } },
-        focusRing: { value: { base: '{colors.adit.400}', _dark: '{colors.adit.300}' } }
+
+        infoBg: { value: { base: '#f1efea', _dark: '#272522' } },
+        infoBorder: { value: { base: '#dcd9d1', _dark: '#383530' } },
+        infoFg: { value: { base: '#6f6a5f', _dark: '#dcd8d0' } },
+        errorBg: { value: { base: '#fbeae3', _dark: '#33201a' } },
+        errorBorder: { value: { base: '#e8c3b2', _dark: '#6e3a2a' } },
+        errorFg: { value: { base: '#a3502f', _dark: '#e3a684' } },
+        focusRing: { value: { base: '#cf8a64', _dark: '#d18a5e' } }
       },
       shadows: {
-        card: { value: { base: '0 1px 2px rgba(15, 23, 42, 0.05)', _dark: '0 1px 2px rgba(0, 0, 0, 0.34)' } },
-        cardHover: { value: { base: '0 10px 24px rgba(15, 23, 42, 0.1)', _dark: '0 12px 28px rgba(0, 0, 0, 0.42)' } },
-        focus: { value: { base: '0 0 0 3px rgba(74, 162, 141, 0.22)', _dark: '0 0 0 3px rgba(120, 192, 173, 0.2)' } }
+        primaryButton: { value: '0 1px 2px rgba(50, 38, 20, 0.12)' },
+        trackActive: { value: { base: '0 1px 2px rgba(50, 38, 20, 0.07)', _dark: '0 1px 2px rgba(0, 0, 0, 0.3)' } },
+        card: { value: { base: '0 1px 2px rgba(50, 38, 20, 0.05)', _dark: '0 1px 2px rgba(0, 0, 0, 0.34)' } },
+        cardHover: {
+          value: {
+            base: '0 16px 32px rgba(50, 38, 20, 0.11)',
+            _dark: '0 16px 34px rgba(0, 0, 0, 0.46)'
+          }
+        },
+        menu: {
+          value: {
+            base: '0 18px 40px rgba(50, 38, 20, 0.18)',
+            _dark: '0 20px 44px rgba(0, 0, 0, 0.52)'
+          }
+        },
+        focus: { value: { base: '0 0 0 3px rgba(176, 100, 64, 0.22)', _dark: '0 0 0 3px rgba(209, 138, 94, 0.24)' } }
       }
     }
   }
