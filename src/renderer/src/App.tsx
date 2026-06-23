@@ -221,19 +221,32 @@ function TopBar({ busy, sessionState, runAction, setSessionState }: TopBarProps)
         </HStack>
 
         {sessionState.mode === 'list' ? (
-          <Button
-            bg="accent"
-            color="accentContrast"
-            disabled={busy}
-            onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))}
-            fontSize="xs"
-            h="8"
-            px="3"
-            _hover={{ bg: 'accentHover' }}
-          >
-            <Icon as={MessageSquare} />
-            New ChatGPT
-          </Button>
+          <HStack gap="2">
+            <Button
+              bg="accent"
+              color="accentContrast"
+              disabled={busy}
+              onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))}
+              fontSize="xs"
+              h="8"
+              px="3"
+              _hover={{ bg: 'accentHover' }}
+            >
+              <Icon as={MessageSquare} />
+              New ChatGPT
+            </Button>
+            <Button
+              disabled={busy}
+              fontSize="xs"
+              h="8"
+              onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))}
+              px="3"
+              variant="outline"
+            >
+              <Icon as={Sparkles} />
+              New Grok
+            </Button>
+          </HStack>
         ) : (
           <HStack gap="3">
             <HStack color={sessionState.sessionUrl ? 'capturedFg' : 'waitingFg'} gap="1.5">
@@ -322,7 +335,7 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
         description={
           archived
             ? 'Archived sessions will appear here after you move them out of the main list.'
-            : 'Start a ChatGPT session. Adit saves it only after the provider creates a conversation URL.'
+            : 'Start a ChatGPT or Grok session. Adit saves it only after the provider creates a conversation URL.'
         }
         icon={archived ? <Archive /> : <FileText />}
         title={archived ? 'No archived notes' : 'No saved sessions yet'}

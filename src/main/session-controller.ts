@@ -4,13 +4,7 @@ import type { NoteRow, ProviderId, SessionState } from '../shared/types'
 import type { NoteStore } from './db/notes'
 import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { watchNavigation } from './nav-watcher'
-import {
-  attachProviderView,
-  createProviderView,
-  prepareProviderView,
-  removeProviderView,
-  resizeProviderView
-} from './session-view'
+import { attachProviderView, createProviderView, removeProviderView, resizeProviderView } from './session-view'
 
 interface ActiveSession {
   provider: ProviderConfig
@@ -46,17 +40,17 @@ export class SessionController {
     }
     this.active = active
     active.unwatch = this.attachViewEvents(active)
+    attachProviderView(this.window, view)
+    this.publishState()
 
     try {
       await view.webContents.loadURL(provider.homeUrl)
-      await prepareProviderView(view, provider)
     } catch (reason) {
       this.clearActive(active)
       throw reason
     }
 
     if (this.active?.view === view && this.active.mode === 'creating') {
-      attachProviderView(this.window, view)
       this.active.mode = 'active_ephemeral'
       this.publishState()
     }
@@ -91,10 +85,11 @@ export class SessionController {
     }
     this.active = active
     active.unwatch = this.attachViewEvents(active)
+    attachProviderView(this.window, view)
+    this.publishState()
 
     try {
       await view.webContents.loadURL(note.session_url)
-      await prepareProviderView(view, provider)
     } catch (reason) {
       this.clearActive(active)
       throw reason
@@ -104,7 +99,6 @@ export class SessionController {
       const touched = this.store.touchOpened(note.id)
       this.active.title = touched.title
       this.publishNotesChanged()
-      attachProviderView(this.window, view)
       this.publishState()
     }
 

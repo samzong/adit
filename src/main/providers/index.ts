@@ -8,32 +8,9 @@ export interface ProviderConfig {
   allowedHosts: string[]
   sessionUrlPattern: RegExp
   loginUrlPatterns: RegExp[]
-  pageAdapter?: ProviderPageAdapter
-}
-
-export interface ProviderPageAdapter {
-  css?: string
 }
 
 const UUID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
-
-const chatgptAdapterCss = `
-:root {
-  --sidebar-width: 0px !important;
-  --sidebar-rail-width: 0px !important;
-}
-
-#stage-slideover-sidebar,
-#stage-sidebar-tiny-bar,
-.stage-sidebar-pure-surface {
-  display: none !important;
-  width: 0 !important;
-  min-width: 0 !important;
-  max-width: 0 !important;
-  flex: 0 0 0 !important;
-  border: 0 !important;
-}
-`
 
 export function sessionUrlPatternFor(host: string): RegExp {
   const escapedHost = host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -48,19 +25,16 @@ export const providers = {
     partition: 'persist:chatgpt',
     allowedHosts: ['chatgpt.com', 'auth.openai.com', 'chat.openai.com'],
     sessionUrlPattern: sessionUrlPatternFor('chatgpt.com'),
-    loginUrlPatterns: [/auth\.openai\.com/i, /\/log-?in/i],
-    pageAdapter: {
-      css: chatgptAdapterCss
-    }
+    loginUrlPatterns: [/auth\.openai\.com/i, /\/log-?in/i]
   },
   grok: {
     id: 'grok',
     label: 'Grok',
     homeUrl: 'https://grok.com/',
     partition: 'persist:grok',
-    allowedHosts: ['grok.com', 'x.com', 'accounts.x.com'],
+    allowedHosts: ['grok.com', 'x.com', 'accounts.x.com', 'accounts.x.ai', 'auth.grokipedia.com', 'auth.grokusercontent.com'],
     sessionUrlPattern: sessionUrlPatternFor('grok.com'),
-    loginUrlPatterns: [/x\.com\/i\/(oauth2|flow\/login)/i, /\/log-?in/i]
+    loginUrlPatterns: [/x\.com\/i\/(oauth2|flow\/login)/i, /accounts\.x\.ai\/sign-in/i, /\/log-?in/i]
   }
 } satisfies Record<ProviderId, ProviderConfig>
 

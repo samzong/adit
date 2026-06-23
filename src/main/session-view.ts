@@ -1,5 +1,5 @@
+import { join } from 'node:path'
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
-import log from 'electron-log/main'
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
 
 const HEADER_HEIGHT = 52
@@ -8,7 +8,7 @@ const chromeUserAgent =
 
 const configuredPartitions = new Set<string>()
 const attachedProviderViews = new WeakSet<WebContentsView>()
-const providerCssStates = new WeakMap<WebContentsView, ProviderCssState>()
+const providerAdapterPreloadPath = join(__dirname, '../preload/provider-adapter.js')
 
 export function createProviderView(window: BrowserWindow, provider: ProviderConfig): WebContentsView {
   configurePartition(provider)
@@ -33,14 +33,9 @@ export function createProviderView(window: BrowserWindow, provider: ProviderConf
   view.webContents.on('did-create-window', (childWindow) => {
     childWindow.webContents.setUserAgent(chromeUserAgent)
   })
-  installProviderCss(view, provider)
 
   resizeProviderView(window, view)
   return view
-}
-
-export async function prepareProviderView(view: WebContentsView, provider: ProviderConfig): Promise<void> {
-  await insertProviderCss(view, provider)
 }
 
 export function attachProviderView(window: BrowserWindow, view: WebContentsView): void {
@@ -89,6 +84,11 @@ function configurePartition(provider: ProviderConfig): void {
   }
 
   const providerSession = session.fromPartition(provider.partition)
+  providerSession.registerPreloadScript({
+    id: 'adit-provider-adapter',
+    type: 'frame',
+    filePath: providerAdapterPreloadPath
+  })
   providerSession.webRequest.onBeforeSendHeaders((details, callback) => {
     callback({
       requestHeaders: {
@@ -98,80 +98,4 @@ function configurePartition(provider: ProviderConfig): void {
     })
   })
   configuredPartitions.add(provider.partition)
-}
-
-interface ProviderCssState {
-  css: string
-  insertedVersion: number
-  navVersion: number
-  pending: Promise<void> | null
-  pendingVersion: number | null
-}
-
-function installProviderCss(view: WebContentsView, provider: ProviderConfig): void {
-  const css = provider.pageAdapter?.css?.trim()
-
-  if (!css) {
-    return
-  }
-
-  const state: ProviderCssState = {
-    css,
-    insertedVersion: -1,
-    navVersion: 0,
-    pending: null,
-    pendingVersion: null
-  }
-  providerCssStates.set(view, state)
-
-  const reset = (event: Electron.Event<Electron.WebContentsDidStartNavigationEventParams>): void => {
-    if (event.isMainFrame && !event.isSameDocument) {
-      state.navVersion += 1
-      state.insertedVersion = -1
-      state.pending = null
-      state.pendingVersion = null
-    }
-  }
-
-  view.webContents.on('did-start-navigation', reset)
-  view.webContents.on('dom-ready', () => {
-    void insertProviderCss(view, provider)
-  })
-}
-
-async function insertProviderCss(view: WebContentsView, provider: ProviderConfig): Promise<void> {
-  const state = providerCssStates.get(view)
-
-  if (!state || view.webContents.isDestroyed()) {
-    return
-  }
-
-  if (state.insertedVersion === state.navVersion) {
-    return
-  }
-
-  if (state.pending && state.pendingVersion === state.navVersion) {
-    return state.pending
-  }
-
-  const navVersion = state.navVersion
-  state.pendingVersion = navVersion
-  state.pending = view.webContents
-    .insertCSS(state.css, { cssOrigin: 'user' })
-    .then(() => {
-      if (state.navVersion === navVersion) {
-        state.insertedVersion = navVersion
-      }
-    })
-    .catch((reason) => {
-      log.warn(`Failed to insert ${provider.id} provider CSS`, reason)
-    })
-    .finally(() => {
-      if (state.pendingVersion === navVersion) {
-        state.pending = null
-        state.pendingVersion = null
-      }
-    })
-
-  return state.pending
 }

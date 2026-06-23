@@ -38,7 +38,7 @@ M0 Login Spike(`m0-login-spike/`,Electron 42.4.1)已实测,**地基成立**。�
 **由 M0 锁定的产品约束**:
 
 1. **登录方式 = 邮箱密码**。UI **不引导用户点 Google/Apple SSO**(嵌入式必失败),文案明确"请用邮箱密码登录"。
-2. **Grok 登录经由 X**:`x.com/i/oauth2/authorize`,Grok 账号即 X 账号。导航白名单**必须包含 x.com**,否则 Grok 登录流程被拦。
+2. **Grok 登录经由 X/xAI 链路**:`accounts.x.ai` 登录页 + `auth.grokipedia.com` / `auth.grokusercontent.com` cookie 回跳;Grok 账号即 X/xAI 账号。导航白名单**必须包含这些登录域**,否则 Grok 登录流程被拦。
 3. **两家 provider 的 session URL 同构**(`/c/{uuid}`),capturer 可用一个按域名参数化的模板。
 4. **passkey 推迟到 v2 签名构建**:官方支持自 Electron 42 起(`app.configureWebAuthn`),需 Apple Developer Program 签名 + entitlements;与对外分发的签名/公证顺路一起做(见 §14)。
 
@@ -68,7 +68,7 @@ M0 Login Spike(`m0-login-spike/`,Electron 42.4.1)已实测,**地基成立**。�
 | 网页承载 API | **`WebContentsView`**,禁用 `<webview>` 标签与 `BrowserView` | 后两者 Electron 已废弃/不推荐;`<webview>` 事件与隔离模型易踩坑 |
 | 登录态分区 | **`persist:chatgpt` + `persist:grok` 分离** | 隔离更稳:一家 cookie 出问题不波及另一家;存储成本可忽略 |
 | 标题抓取 | **`page-title-updated` 事件 + 关闭兜底 + 手动改名**,**不读取 DOM 正文** | 标题只走浏览器事件和 `<title>` 兜底;不读取用户消息或回答内容 |
-| Provider 页适配 | **允许 Main 侧受控 adapter(CSS;必要时 JS)** | Adit 是 Electron shell,可做轻量页面适配;边界是不抓正文、不暴露 IPC、不自动替用户操作 |
+| Provider 页适配 | **provider partition preload adapter(CSS;必要时 JS)** | 页面首帧前适配,不把 UI 切换绑定到远端 load;边界是不抓正文、不暴露 IPC、不自动替用户操作 |
 | "首句 fallback" 标题 | **否决** | 读用户消息文本 = 抓正文,与核心边界自相矛盾 |
 | 窗口模型 | **单 shell 窗口,`mode: list \| session` 切换** | 独立会话窗口增加生命周期复杂度,收益小 |
 | 标题搜索 | **进 MVP(P0)** | SQL `LIKE` on indexed column,成本极低、价值高 |
@@ -101,7 +101,7 @@ M0 Login Spike(`m0-login-spike/`,Electron 42.4.1)已实测,**地基成立**。�
 
 **进程职责**
 
-- **Main**:SQLite 读写、`webContents` 事件监听(URL/标题捕获)、`WebContentsView` 生命周期与 bounds 同步、provider page adapter、IPC handler、cookie 分区、窗口生命周期、`before-quit` 落库、导航白名单。
+- **Main**:SQLite 读写、`webContents` 事件监听(URL/标题捕获)、`WebContentsView` 生命周期与 bounds 同步、provider preload 注册、IPC handler、cookie 分区、窗口生命周期、`before-quit` 落库、导航白名单。
 - **Renderer**:纯 UI(列表/归档/搜索/新建 picker/toast),**只走 IPC,不直连 DB,不操作 provider 页**。
 - **Preload**:`contextBridge` 暴露白名单 IPC;**不向 provider 页暴露 Adit IPC**。
 - **WebContentsView**:承载 provider 原生页,domain allowlist 锁死。
@@ -197,10 +197,17 @@ interface ProviderConfig {
   label: 'Grok',
   homeUrl: 'https://grok.com/',
   partition: 'persist:grok',
-  allowedHosts: ['grok.com', 'x.com', 'accounts.x.com'],
+  allowedHosts: [
+    'grok.com',
+    'x.com',
+    'accounts.x.com',
+    'accounts.x.ai',
+    'auth.grokipedia.com',
+    'auth.grokusercontent.com',
+  ],
   sessionUrlPattern:
     /^https:\/\/grok\.com\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
-  loginUrlPatterns: [/x\.com\/i\/(oauth2|flow\/login)/, /\/log-?in/],
+  loginUrlPatterns: [/x\.com\/i\/(oauth2|flow\/login)/, /accounts\.x\.ai\/sign-in/, /\/log-?in/],
 }
 ```
 
@@ -253,10 +260,12 @@ webPreferences: {
 
 **Provider page adapter 边界**
 
-允许在 Main 侧按 provider 配置对远端页面做轻量适配,因为 Adit 的产品价值就是把原生网页装进本地 shell 后补齐本地体验。当前允许项:
+允许按 provider 配置对远端页面做轻量适配,因为 Adit 的产品价值就是把原生网页装进本地 shell 后补齐本地体验。适配必须走 provider partition 的 `session.registerPreloadScript({ type: 'frame' })`,在页面首帧前执行;Main 侧不得为了适配等待 `loadURL` / `dom-ready` 后再显示页面。
 
-- `insertCSS`:布局、隐藏无关 chrome、主题适配、避免闪烁。
-- `insertJavaScript`:仅在有明确产品需求时使用,必须保持 provider-scoped、idempotent、可删除。
+当前允许项:
+
+- preload 中 `webFrame.insertCSS`:布局、隐藏无关 chrome、主题适配、避免闪烁。
+- preload 中最小 JS adapter:仅在有明确产品需求时使用,必须保持 provider-scoped、idempotent、可删除。
 
 硬边界:
 
@@ -406,7 +415,7 @@ webPreferences: {
 | R3 | Provider URL/标题改版 | 中 | 中 | capturer 模块隔离 + 单测,改版只改一处 |
 | R4 | Cookie 过期 | 高(必然) | 中 | 登录页 URL 检测 + toast |
 | R5 | 标题延迟/不可用 | 高 | 低 | 关闭兜底 + 手动改名 + 时间戳 |
-| R6 | Grok 登录依赖 x.com 链路变动 | 中 | 中 | 白名单含 x.com;`loginUrlPatterns` 单点维护 |
+| R6 | Grok 登录依赖 xAI/X cookie 回跳链路变动 | 中 | 中 | 白名单含实测登录域;`loginUrlPatterns` 单点维护 |
 | R7 | Cmd+Q/崩溃丢 in-flight 会话 | 低 | 高 | `before-quit` flush;upsert-on-capture |
 | R8 | 未签名 Gatekeeper 拦截 | 高(MVP) | 中 | README 右键打开;v2 notarize |
 | R9 | ToS(外壳包裹 provider 网页) | 低(自用)/中(分发) | 中 | 自用先行;分发前审 OpenAI/xAI 条款 |
@@ -433,7 +442,7 @@ adit/
 │   │   ├── capturers/             # URL 正则 + 单测(可并入 providers/)
 │   │   ├── db/                    # connection.ts / schema.sql / notes.ts
 │   │   └── ipc/                   # index.ts / notes.ts / sessions.ts
-│   ├── preload/                   # 仅暴露白名单 IPC,不注入 provider 页
+│   ├── preload/                   # shell IPC preload + provider adapter preload
 │   ├── shared/                    # types.ts / ipc.ts(channel 名 + 类型)
 │   └── renderer/                  # App.tsx / components / stores / styles
 └── resources/                     # icon.icns / icon.png

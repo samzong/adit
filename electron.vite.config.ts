@@ -18,7 +18,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.ts')
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          'provider-adapter': resolve(__dirname, 'src/preload/provider-adapter.ts')
         }
       }
     }
