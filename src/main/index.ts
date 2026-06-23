@@ -90,22 +90,18 @@ function configureMenu(): void {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
-        {
-          label: 'Quit Adit',
-          accelerator: 'CommandOrControl+Q',
-          click: () => app.quit()
-        }
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
       ]
     },
     {
       label: 'File',
-      submenu: [
-        {
-          label: 'Close Session',
-          accelerator: 'CommandOrControl+W',
-          click: () => sessions?.close()
-        }
-      ]
+      submenu: [{ role: 'close' }]
     },
     {
       label: 'Edit',
@@ -121,7 +117,20 @@ function configureMenu(): void {
     },
     {
       label: 'View',
-      submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }]
+      submenu: [
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }]
     }
   ])
 

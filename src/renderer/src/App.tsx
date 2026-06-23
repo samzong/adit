@@ -1,4 +1,18 @@
-import { Box, Button, EmptyState, Flex, HStack, Icon, IconButton, Input, Menu, Portal, Stack, Text, Tooltip } from '@chakra-ui/react'
+import {
+  Box,
+  Button,
+  EmptyState,
+  Flex,
+  HStack,
+  Icon,
+  IconButton,
+  Input,
+  Menu,
+  Portal,
+  Stack,
+  Text,
+  Tooltip
+} from '@chakra-ui/react'
 import {
   Archive,
   ArrowRight,
@@ -225,17 +239,24 @@ function TitleBar(): JSX.Element {
       borderBottomColor="chromeBorder"
       position="relative"
     >
-      <Text
+      <HStack
         color="muted"
         fontSize="sm"
-        fontWeight="600"
+        gap="1"
         left="50%"
+        lineHeight="1"
         position="absolute"
         top="50%"
         transform="translate(-50%, -50%)"
+        whiteSpace="nowrap"
       >
-        Adit
-      </Text>
+        <Text as="span" fontWeight="600">
+          Adit
+        </Text>
+        <Text as="span" color="faint" fontWeight="400">
+          — Speak, don’t type
+        </Text>
+      </HStack>
     </Box>
   )
 }
@@ -247,17 +268,23 @@ interface SectionTabsProps {
 
 function SectionTabs({ section, setSection }: SectionTabsProps): JSX.Element {
   return (
-    <Flex
-      flexShrink="0"
-      justify="center"
-      bg="panelHeader"
-      borderBottomWidth="1px"
-      borderBottomColor="border"
-      py="18px"
-    >
-      <HStack bg="track" borderColor="trackBorder" borderRadius="full" borderWidth="1px" gap="1.5" p="1.5" role="tablist">
+    <Flex flexShrink="0" justify="center" bg="panelHeader" borderBottomWidth="1px" borderBottomColor="border" py="18px">
+      <HStack
+        bg="track"
+        borderColor="trackBorder"
+        borderRadius="full"
+        borderWidth="1px"
+        gap="1.5"
+        p="1.5"
+        role="tablist"
+      >
         <SectionTab icon={Sparkles} label="Spark" active={section === 'spark'} onClick={() => setSection('spark')} />
-        <SectionTab icon={Folder} label="Library" active={section === 'library'} onClick={() => setSection('library')} />
+        <SectionTab
+          icon={Folder}
+          label="Library"
+          active={section === 'library'}
+          onClick={() => setSection('library')}
+        />
       </HStack>
     </Flex>
   )
@@ -319,7 +346,17 @@ function Toolbar({ busy, query, setQuery, archived, setArchived, onCreateSession
       borderBottomColor="border"
     >
       <Box position="relative" flex="1" maxW="440px">
-        <Icon as={Search} boxSize="4" color="faint" left="3.5" pointerEvents="none" position="absolute" top="50%" transform="translateY(-50%)" zIndex="1" />
+        <Icon
+          as={Search}
+          boxSize="4"
+          color="faint"
+          left="3.5"
+          pointerEvents="none"
+          position="absolute"
+          top="50%"
+          transform="translateY(-50%)"
+          zIndex="1"
+        />
         <Input
           bg="cardBg"
           borderColor="border"
@@ -402,7 +439,11 @@ function NewSessionSplit({ busy, onCreateSession }: NewSessionSplitProps): JSX.E
         <Icon as={Plus} boxSize="4" />
         <Text as="span">New {primary.label}</Text>
       </Flex>
-      <Menu.Root open={menuOpen} onOpenChange={(details) => setMenuOpen(details.open)} positioning={{ placement: 'bottom-end' }}>
+      <Menu.Root
+        open={menuOpen}
+        onOpenChange={(details) => setMenuOpen(details.open)}
+        positioning={{ placement: 'bottom-end' }}
+      >
         <Menu.Trigger asChild>
           <Flex
             as="button"
@@ -431,8 +472,24 @@ function NewSessionSplit({ busy, onCreateSession }: NewSessionSplitProps): JSX.E
         </Menu.Trigger>
         <Portal>
           <Menu.Positioner>
-            <Menu.Content bg="cardBg" borderColor="borderStrong" borderRadius="11px" borderWidth="1px" minW="220px" p="1.5" shadow="menu">
-              <Text color="faint" fontSize="2xs" fontWeight="700" letterSpacing="0.1em" px="2.5" py="1.5" textTransform="uppercase">
+            <Menu.Content
+              bg="cardBg"
+              borderColor="borderStrong"
+              borderRadius="11px"
+              borderWidth="1px"
+              minW="220px"
+              p="1.5"
+              shadow="menu"
+            >
+              <Text
+                color="faint"
+                fontSize="2xs"
+                fontWeight="700"
+                letterSpacing="0.1em"
+                px="2.5"
+                py="1.5"
+                textTransform="uppercase"
+              >
                 Start a session
               </Text>
               {providerDefs.map((provider) => {
@@ -447,7 +504,14 @@ function NewSessionSplit({ busy, onCreateSession }: NewSessionSplitProps): JSX.E
                     py="2"
                     onClick={() => onCreateSession(provider.id)}
                   >
-                    <Flex align="center" justify="center" bg={colors.bg} borderRadius="6px" boxSize="6" color={colors.fg}>
+                    <Flex
+                      align="center"
+                      justify="center"
+                      bg={colors.bg}
+                      borderRadius="6px"
+                      boxSize="6"
+                      color={colors.fg}
+                    >
                       <Icon as={Sparkles} boxSize="3.5" />
                     </Flex>
                     <Text flex="1" fontSize="sm" fontWeight="600" color="fg">
@@ -484,7 +548,16 @@ function FooterBar(): JSX.Element {
       <Text fontSize="xs" fontWeight="500">
         Adit works best when you speak to your AI instead of typing.
       </Text>
-      <Button asChild color="accent" fontSize="xs" fontWeight="600" h="6" px="1.5" variant="ghost" _hover={{ bg: 'track' }}>
+      <Button
+        asChild
+        color="accent"
+        fontSize="xs"
+        fontWeight="600"
+        h="6"
+        px="1.5"
+        variant="ghost"
+        _hover={{ bg: 'track' }}
+      >
         <a href={repositoryUrl} rel="noreferrer" target="_blank">
           GitHub
           <Icon as={ExternalLink} boxSize="3" />
@@ -684,7 +757,14 @@ function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps):
         <Text textStyle="cardTitle" color="fg" lineClamp="2" minW="0" overflow="hidden">
           {note.title}
         </Text>
-        <Text color="muted" fontSize="13px" fontWeight="500" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+        <Text
+          color="muted"
+          fontSize="13px"
+          fontWeight="500"
+          overflow="hidden"
+          textOverflow="ellipsis"
+          whiteSpace="nowrap"
+        >
           {formatSessionHost(note.session_url)}
         </Text>
       </Stack>
@@ -798,7 +878,15 @@ function LibraryPlaceholder(): JSX.Element {
   )
 }
 
-function AditEmptyState({ description, icon, title }: { description: string; icon: JSX.Element; title: string }): JSX.Element {
+function AditEmptyState({
+  description,
+  icon,
+  title
+}: {
+  description: string
+  icon: JSX.Element
+  title: string
+}): JSX.Element {
   return (
     <Flex
       align="center"

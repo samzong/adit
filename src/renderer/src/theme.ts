@@ -1,6 +1,7 @@
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
 
-const hankenStack = "'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+const hankenStack =
+  "'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 const bricolageStack = "'Bricolage Grotesque', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
 const splineMonoStack = "'Spline Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace"
 
