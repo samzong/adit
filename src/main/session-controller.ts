@@ -4,7 +4,13 @@ import type { NoteRow, ProviderId, SessionState } from '../shared/types'
 import type { NoteStore } from './db/notes'
 import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { watchNavigation } from './nav-watcher'
-import { createProviderView, removeProviderView, resizeProviderView } from './session-view'
+import {
+  attachProviderView,
+  createProviderView,
+  prepareProviderView,
+  removeProviderView,
+  resizeProviderView
+} from './session-view'
 
 interface ActiveSession {
   provider: ProviderConfig
@@ -29,7 +35,7 @@ export class SessionController {
 
     const provider = getProvider(providerId)
     const view = this.createView(provider)
-    this.active = {
+    const active: ActiveSession = {
       provider,
       view,
       mode: 'creating',
@@ -38,11 +44,19 @@ export class SessionController {
       title: null,
       unwatch: () => undefined
     }
-    this.active.unwatch = this.attachViewEvents(this.active)
-    this.publishState()
-    await view.webContents.loadURL(provider.homeUrl)
+    this.active = active
+    active.unwatch = this.attachViewEvents(active)
+
+    try {
+      await view.webContents.loadURL(provider.homeUrl)
+      await prepareProviderView(view, provider)
+    } catch (reason) {
+      this.clearActive(active)
+      throw reason
+    }
 
     if (this.active?.view === view && this.active.mode === 'creating') {
+      attachProviderView(this.window, view)
       this.active.mode = 'active_ephemeral'
       this.publishState()
     }
@@ -59,27 +73,41 @@ export class SessionController {
 
     this.close()
 
-    const touched = this.store.touchOpened(note.id)
-    const provider = getProvider(touched.provider)
+    const provider = getProvider(note.provider)
 
-    if (!isAllowedProviderUrl(provider, touched.session_url)) {
+    if (!isAllowedProviderUrl(provider, note.session_url)) {
       throw new Error('Session URL is outside provider allowlist')
     }
 
     const view = this.createView(provider)
-    this.active = {
+    const active: ActiveSession = {
       provider,
       view,
       mode: 'active_saved',
-      noteId: touched.id,
-      sessionUrl: touched.session_url,
-      title: touched.title,
+      noteId: note.id,
+      sessionUrl: note.session_url,
+      title: note.title,
       unwatch: () => undefined
     }
-    this.active.unwatch = this.attachViewEvents(this.active)
-    this.publishNotesChanged()
-    this.publishState()
-    await view.webContents.loadURL(touched.session_url)
+    this.active = active
+    active.unwatch = this.attachViewEvents(active)
+
+    try {
+      await view.webContents.loadURL(note.session_url)
+      await prepareProviderView(view, provider)
+    } catch (reason) {
+      this.clearActive(active)
+      throw reason
+    }
+
+    if (this.active?.view === view) {
+      const touched = this.store.touchOpened(note.id)
+      this.active.title = touched.title
+      this.publishNotesChanged()
+      attachProviderView(this.window, view)
+      this.publishState()
+    }
+
     return this.getState()
   }
 
@@ -134,6 +162,17 @@ export class SessionController {
 
   private createView(provider: ProviderConfig): WebContentsView {
     return createProviderView(this.window, provider)
+  }
+
+  private clearActive(active: ActiveSession): void {
+    if (this.active !== active) {
+      return
+    }
+
+    active.unwatch()
+    removeProviderView(this.window, active.view)
+    this.active = null
+    this.publishState()
   }
 
   private attachViewEvents(active: ActiveSession): () => void {

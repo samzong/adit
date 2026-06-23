@@ -67,7 +67,8 @@ M0 Login Spike(`m0-login-spike/`,Electron 42.4.1)已实测,**地基成立**。�
 |---|---|---|
 | 网页承载 API | **`WebContentsView`**,禁用 `<webview>` 标签与 `BrowserView` | 后两者 Electron 已废弃/不推荐;`<webview>` 事件与隔离模型易踩坑 |
 | 登录态分区 | **`persist:chatgpt` + `persist:grok` 分离** | 隔离更稳:一家 cookie 出问题不波及另一家;存储成本可忽略 |
-| 标题抓取 | **`page-title-updated` 事件 + 关闭兜底 + 手动改名**,**不注入 DOM** | 向 provider 页注入脚本有 ToS 风险且脆弱;事件路径零注入 |
+| 标题抓取 | **`page-title-updated` 事件 + 关闭兜底 + 手动改名**,**不读取 DOM 正文** | 标题只走浏览器事件和 `<title>` 兜底;不读取用户消息或回答内容 |
+| Provider 页适配 | **允许 Main 侧受控 adapter(CSS;必要时 JS)** | Adit 是 Electron shell,可做轻量页面适配;边界是不抓正文、不暴露 IPC、不自动替用户操作 |
 | "首句 fallback" 标题 | **否决** | 读用户消息文本 = 抓正文,与核心边界自相矛盾 |
 | 窗口模型 | **单 shell 窗口,`mode: list \| session` 切换** | 独立会话窗口增加生命周期复杂度,收益小 |
 | 标题搜索 | **进 MVP(P0)** | SQL `LIKE` on indexed column,成本极低、价值高 |
@@ -93,16 +94,16 @@ M0 Login Spike(`m0-login-spike/`,Electron 42.4.1)已实测,**地基成立**。�
 ├────────────────────────────┬──────────────────────────────┤
 │  Renderer: Shell (React)   │  WebContentsView (active)    │
 │  list / archive / search   │  原生 ChatGPT 或 Grok 页     │
-│  new-note picker / toast   │  零注入 UI,无地址栏          │
+│  new-note picker / toast   │  轻量 page adapter,无地址栏  │
 │  mode: list | session      │  domain allowlist 锁死        │
 └────────────────────────────┴──────────────────────────────┘
 ```
 
 **进程职责**
 
-- **Main**:SQLite 读写、`webContents` 事件监听(URL/标题捕获)、`WebContentsView` 生命周期与 bounds 同步、IPC handler、cookie 分区、窗口生命周期、`before-quit` 落库、导航白名单。
+- **Main**:SQLite 读写、`webContents` 事件监听(URL/标题捕获)、`WebContentsView` 生命周期与 bounds 同步、provider page adapter、IPC handler、cookie 分区、窗口生命周期、`before-quit` 落库、导航白名单。
 - **Renderer**:纯 UI(列表/归档/搜索/新建 picker/toast),**只走 IPC,不直连 DB,不操作 provider 页**。
-- **Preload**:`contextBridge` 暴露白名单 IPC;**不向 provider 页注入任何脚本**。
+- **Preload**:`contextBridge` 暴露白名单 IPC;**不向 provider 页暴露 Adit IPC**。
 - **WebContentsView**:承载 provider 原生页,domain allowlist 锁死。
 
 ---
@@ -249,6 +250,21 @@ webPreferences: {
 - 不向 provider 页暴露文件系统 / IPC / 可执行回调。
 - 导航与新窗口走 `allowedHosts` 白名单;`setWindowOpenHandler` 仅按需放行(OAuth popup 行为已在 M0 观测)。
 - 所有 IPC handler 在 Main 端校验参数,Renderer 与 provider 页均视为不可信输入源。
+
+**Provider page adapter 边界**
+
+允许在 Main 侧按 provider 配置对远端页面做轻量适配,因为 Adit 的产品价值就是把原生网页装进本地 shell 后补齐本地体验。当前允许项:
+
+- `insertCSS`:布局、隐藏无关 chrome、主题适配、避免闪烁。
+- `insertJavaScript`:仅在有明确产品需求时使用,必须保持 provider-scoped、idempotent、可删除。
+
+硬边界:
+
+- 不读取 prompt / answer / 聊天列表等正文内容。
+- 不抓 cookie、localStorage、账号信息或 provider 内部 token。
+- 不向 provider 页面暴露 Adit IPC、文件系统或可执行回调。
+- 不用轮询或无界 `MutationObserver`;需要 DOM 监听时必须有窄 selector、生命周期清理和性能理由。
+- 不自动替用户提交消息、付款、授权、删除或分享等第三方副作用操作。
 
 ---
 
