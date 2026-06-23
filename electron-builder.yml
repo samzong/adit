@@ -9,6 +9,13 @@ files:
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*
+extraResources:
+  - from: resources/iconTemplate.png
+    to: iconTemplate.png
+    filter: ['**/*']
+  - from: resources/iconTemplate@2x.png
+    to: iconTemplate@2x.png
+    filter: ['**/*']
 mac:
   category: public.app-category.productivity
   icon: resources/icon.icns

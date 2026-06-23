@@ -1,16 +1,22 @@
-import { app, Menu, type BrowserWindow } from 'electron'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { app, Menu, nativeImage, Tray, type BrowserWindow } from 'electron'
 import log from 'electron-log/main'
 import { openDatabase, type DatabaseConnection } from './db/connection'
 import { NoteStore } from './db/notes'
 import { registerIpc } from './ipc'
+import { providers } from './providers'
 import { SessionController } from './session-controller'
 import { createMainWindow } from './window'
+import type { ProviderId } from '../shared/types'
 
 const acquiredSingleInstanceLock = app.requestSingleInstanceLock()
 
 let database: DatabaseConnection | null = null
 let sessions: SessionController | null = null
 let mainWindow: BrowserWindow | null = null
+let menubar: Tray | null = null
+let isQuitting = false
 
 log.initialize()
 
@@ -20,12 +26,11 @@ if (!acquiredSingleInstanceLock) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore()
-      }
-      mainWindow.focus()
-    }
+    showMainWindow()
+  })
+
+  app.on('activate', () => {
+    showMainWindow()
   })
 
   void app.whenReady().then(() => {
@@ -36,11 +41,26 @@ if (!acquiredSingleInstanceLock) {
 
     registerIpc(store, sessions)
     configureMenu()
+    configureMenubar()
 
     mainWindow.on('resize', () => sessions?.resize())
+    mainWindow.on('close', (event) => {
+      if (isQuitting) {
+        return
+      }
+
+      event.preventDefault()
+      mainWindow?.hide()
+    })
     mainWindow.on('closed', () => {
       mainWindow = null
     })
+  })
+
+  app.on('before-quit', () => {
+    isQuitting = true
+    menubar?.destroy()
+    menubar = null
   })
 
   app.on('before-quit', (event) => {
@@ -106,4 +126,97 @@ function configureMenu(): void {
   ])
 
   Menu.setApplicationMenu(menu)
+}
+
+function configureMenubar(): void {
+  if (process.platform !== 'darwin') {
+    return
+  }
+
+  const icon = loadTrayIcon()
+
+  if (!icon) {
+    log.warn('Tray icon missing; menubar item will be invisible until an icon is available')
+    return
+  }
+
+  const tray = new Tray(icon)
+  tray.setToolTip('Adit')
+
+  const providerEntries = (Object.keys(providers) as ProviderId[]).map((id) => ({
+    label: `New ${providers[id].label}`,
+    click: () => startSession(id)
+  }))
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      ...providerEntries,
+      { type: 'separator' },
+      {
+        label: 'Recent Notes',
+        click: () => showRecentNotes()
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit Adit',
+        accelerator: 'CommandOrControl+Q',
+        click: () => app.quit()
+      }
+    ])
+  )
+
+  tray.on('click', () => showMainWindow())
+
+  menubar = tray
+}
+
+function loadTrayIcon(): Electron.NativeImage | null {
+  const iconPath = resolveTrayIconPath()
+
+  if (!iconPath || !existsSync(iconPath)) {
+    return null
+  }
+
+  const icon = nativeImage.createFromPath(iconPath)
+
+  if (icon.isEmpty()) {
+    return null
+  }
+
+  icon.setTemplateImage(true)
+  return icon
+}
+
+function resolveTrayIconPath(): string | null {
+  if (process.env.ELECTRON_RENDERER_URL) {
+    return join(__dirname, '../../resources/iconTemplate.png')
+  }
+
+  return join(process.resourcesPath, 'iconTemplate.png')
+}
+
+function startSession(providerId: ProviderId): void {
+  showMainWindow()
+  sessions?.create(providerId)
+}
+
+function showRecentNotes(): void {
+  showMainWindow()
+  sessions?.close()
+}
+
+function showMainWindow(): void {
+  if (!mainWindow) {
+    return
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+  }
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show()
+  }
+
+  mainWindow.focus()
 }
