@@ -1,7 +1,7 @@
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
 
-const HEADER_HEIGHT = 64
+const HEADER_HEIGHT = 52
 const chromeUserAgent =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
 
