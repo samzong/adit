@@ -93,9 +93,10 @@ export class NoteStore {
 
   updateTitleFromProvider(id: string, title: string | null | undefined, now = Date.now()): NoteRow | null {
     const clean = cleanTitle(title)
+    const note = this.getNote(id)
 
-    if (!clean) {
-      return this.getNote(id)
+    if (!note || !clean || note.is_title_manual || note.title === clean) {
+      return note
     }
 
     this.database

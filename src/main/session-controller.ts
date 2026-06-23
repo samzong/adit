@@ -1,4 +1,5 @@
 import type { BrowserWindow, WebContentsView } from 'electron'
+import log from 'electron-log/main'
 import { IPC } from '../shared/ipc'
 import type { NoteRow, ProviderId, SessionState } from '../shared/types'
 import type { NoteStore } from './db/notes'
@@ -24,7 +25,7 @@ export class SessionController {
     private readonly store: NoteStore
   ) {}
 
-  async create(providerId: ProviderId): Promise<SessionState> {
+  create(providerId: ProviderId): SessionState {
     this.close()
 
     const provider = getProvider(providerId)
@@ -42,30 +43,17 @@ export class SessionController {
     active.unwatch = this.attachViewEvents(active)
     attachProviderView(this.window, view)
     this.publishState()
-
-    try {
-      await view.webContents.loadURL(provider.homeUrl)
-    } catch (reason) {
-      if (this.active !== active) {
-        return this.getState()
-      }
-
-      this.clearActive(active)
-      throw reason
-    }
-
-    if (this.active?.view === view && this.active.mode === 'creating') {
-      this.active.mode = 'active_ephemeral'
-      this.publishState()
-    }
+    void this.loadCreatedSession(active)
 
     return this.getState()
   }
 
-  async open(noteId: string): Promise<SessionState> {
+  open(noteId: string): SessionState {
     const note = this.store.getNote(noteId)
 
-    if (!note?.session_url) {
+    const sessionUrl = note?.session_url
+
+    if (!sessionUrl) {
       throw new Error('Note has no session URL')
     }
 
@@ -73,7 +61,7 @@ export class SessionController {
 
     const provider = getProvider(note.provider)
 
-    if (!isAllowedProviderUrl(provider, note.session_url)) {
+    if (!isAllowedProviderUrl(provider, sessionUrl)) {
       throw new Error('Session URL is outside provider allowlist')
     }
 
@@ -83,7 +71,7 @@ export class SessionController {
       view,
       mode: 'active_saved',
       noteId: note.id,
-      sessionUrl: note.session_url,
+      sessionUrl,
       title: note.title,
       unwatch: () => undefined
     }
@@ -91,24 +79,7 @@ export class SessionController {
     active.unwatch = this.attachViewEvents(active)
     attachProviderView(this.window, view)
     this.publishState()
-
-    try {
-      await view.webContents.loadURL(note.session_url)
-    } catch (reason) {
-      if (this.active !== active) {
-        return this.getState()
-      }
-
-      this.clearActive(active)
-      throw reason
-    }
-
-    if (this.active?.view === view) {
-      const touched = this.store.touchOpened(note.id)
-      this.active.title = touched.title
-      this.publishNotesChanged()
-      this.publishState()
-    }
+    void this.loadSavedSession(active, note)
 
     return this.getState()
   }
@@ -173,16 +144,73 @@ export class SessionController {
     this.publishState()
   }
 
+  private async loadCreatedSession(active: ActiveSession): Promise<void> {
+    try {
+      await active.view.webContents.loadURL(active.provider.homeUrl)
+    } catch (reason) {
+      log.error('Failed to load provider home', { provider: active.provider.id, reason: formatError(reason) })
+
+      if (this.active !== active) {
+        return
+      }
+
+      this.clearActive(active)
+      this.sendToRenderer(IPC.appToast, {
+        level: 'error',
+        message: `Failed to load ${active.provider.label}.`
+      })
+      return
+    }
+
+    if (this.active === active && active.mode === 'creating') {
+      active.mode = 'active_ephemeral'
+      this.publishState()
+    }
+  }
+
+  private async loadSavedSession(active: ActiveSession, note: NoteRow): Promise<void> {
+    if (!note.session_url) {
+      return
+    }
+
+    try {
+      await active.view.webContents.loadURL(note.session_url)
+    } catch (reason) {
+      log.error('Failed to resume session', { noteId: note.id, reason: formatError(reason) })
+
+      if (this.active !== active) {
+        return
+      }
+
+      this.clearActive(active)
+      this.sendToRenderer(IPC.appToast, {
+        level: 'error',
+        message: `Failed to resume ${active.provider.label} session.`
+      })
+      return
+    }
+
+    if (this.active === active) {
+      const touched = this.store.touchOpened(note.id)
+      active.title = touched.title
+      this.publishNotesChanged()
+      this.publishState()
+    }
+  }
+
   private attachViewEvents(active: ActiveSession): () => void {
     const onTitleUpdated = (_event: Electron.Event, title: string): void => {
+      const previousTitle = active.title
       active.title = title
 
       if (active.noteId) {
         const note = this.store.updateTitleFromProvider(active.noteId, title)
         if (note) {
           active.title = note.title
-          this.publishTitle(note)
-          this.publishNotesChanged()
+          if (note.title !== previousTitle) {
+            this.publishTitle(note)
+            this.publishNotesChanged()
+          }
         }
       }
     }
@@ -191,16 +219,16 @@ export class SessionController {
     const unwatch = watchNavigation(active.view.webContents, active.provider, {
       onSessionUrl: (sessionUrl) => this.captureSessionUrl(active, sessionUrl),
       onLoginRequired: () => {
-        this.window.webContents.send(IPC.sessionLoginRequired, active.provider.id)
-        this.window.webContents.send(IPC.appToast, {
+        this.sendToRenderer(IPC.sessionLoginRequired, active.provider.id)
+        this.sendToRenderer(IPC.appToast, {
           level: 'info',
           message: `${active.provider.label} login expired. Sign in with email and password.`
         })
       },
       onBlockedNavigation: (url) => {
-        this.window.webContents.send(IPC.appToast, {
+        this.sendToRenderer(IPC.appToast, {
           level: 'error',
-          message: 'Blocked navigation outside the provider allowlist.'
+          message: `Blocked navigation outside the provider allowlist: ${url}`
         })
       }
     })
@@ -235,25 +263,44 @@ export class SessionController {
       return
     }
 
+    const previousTitle = active.title
     const title = active.title ?? active.view.webContents.getTitle()
     const note = this.store.updateTitleFromProvider(active.noteId, title)
 
     if (note) {
       active.title = note.title
-      this.publishTitle(note)
-      this.publishNotesChanged()
+      if (note.title !== previousTitle) {
+        this.publishTitle(note)
+        this.publishNotesChanged()
+      }
     }
   }
 
   private publishTitle(note: NoteRow): void {
-    this.window.webContents.send(IPC.sessionTitleUpdated, note)
+    this.sendToRenderer(IPC.sessionTitleUpdated, note)
   }
 
   private publishNotesChanged(): void {
-    this.window.webContents.send(IPC.notesChanged)
+    this.sendToRenderer(IPC.notesChanged)
   }
 
   private publishState(): void {
-    this.window.webContents.send(IPC.sessionStateChanged, this.getState())
+    this.sendToRenderer(IPC.sessionStateChanged, this.getState())
   }
+
+  private sendToRenderer(channel: string, ...args: unknown[]): void {
+    if (this.window.isDestroyed() || this.window.webContents.isDestroyed()) {
+      return
+    }
+
+    this.window.webContents.send(channel, ...args)
+  }
+}
+
+function formatError(reason: unknown): string {
+  if (reason instanceof Error) {
+    return reason.message
+  }
+
+  return typeof reason === 'string' ? reason : 'Unknown error'
 }

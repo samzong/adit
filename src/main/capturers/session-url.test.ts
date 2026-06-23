@@ -6,9 +6,7 @@ const id = '123e4567-e89b-12d3-a456-426614174000'
 describe('captureSessionUrl', () => {
   it('captures ChatGPT session URLs', () => {
     expect(captureSessionUrl('chatgpt', `https://chatgpt.com/c/${id}`)).toBe(`https://chatgpt.com/c/${id}`)
-    expect(captureSessionUrl('chatgpt', `https://chatgpt.com/c/${id}?model=gpt-4o`)).toBe(
-      `https://chatgpt.com/c/${id}`
-    )
+    expect(captureSessionUrl('chatgpt', `https://chatgpt.com/c/${id}?model=gpt-4o`)).toBe(`https://chatgpt.com/c/${id}`)
   })
 
   it('captures Grok session URLs', () => {

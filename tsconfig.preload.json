@@ -8,14 +8,8 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["node", "vitest"],
-    "lib": ["ES2022"]
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"]
   },
-  "include": [
-    "electron.vite.config.ts",
-    "vitest.config.ts",
-    "src/main/**/*.ts",
-    "src/shared/**/*.ts",
-    "src/shared/**/*.d.ts"
-  ]
+  "include": ["src/preload/**/*.ts", "src/shared/**/*.ts", "src/shared/**/*.d.ts"]
 }

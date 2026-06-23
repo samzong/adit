@@ -32,7 +32,14 @@ export const providers = {
     label: 'Grok',
     homeUrl: 'https://grok.com/',
     partition: 'persist:grok',
-    allowedHosts: ['grok.com', 'x.com', 'accounts.x.com', 'accounts.x.ai', 'auth.grokipedia.com', 'auth.grokusercontent.com'],
+    allowedHosts: [
+      'grok.com',
+      'x.com',
+      'accounts.x.com',
+      'accounts.x.ai',
+      'auth.grokipedia.com',
+      'auth.grokusercontent.com'
+    ],
     sessionUrlPattern: sessionUrlPatternFor('grok.com'),
     loginUrlPatterns: [/x\.com\/i\/(oauth2|flow\/login)/i, /accounts\.x\.ai\/sign-in/i, /\/log-?in/i]
   }

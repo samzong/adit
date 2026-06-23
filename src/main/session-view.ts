@@ -3,8 +3,9 @@ import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'el
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
 
 const HEADER_HEIGHT = 44
-const chromeUserAgent =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+const PROVIDER_LOADING_BACKGROUND = '#111315'
+const chromeMajorVersion = process.versions.chrome?.split('.')[0] ?? '142'
+const chromeUserAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajorVersion}.0.0.0 Safari/537.36`
 
 const configuredPartitions = new Set<string>()
 const attachedProviderViews = new WeakSet<WebContentsView>()
@@ -17,7 +18,7 @@ export function createProviderView(window: BrowserWindow, provider: ProviderConf
     webPreferences: providerWebPreferences(provider)
   })
 
-  view.setBackgroundColor('#000000')
+  view.setBackgroundColor(PROVIDER_LOADING_BACKGROUND)
 
   view.webContents.setUserAgent(chromeUserAgent)
   view.webContents.setWindowOpenHandler(({ url }) => {
@@ -36,7 +37,6 @@ export function createProviderView(window: BrowserWindow, provider: ProviderConf
     childWindow.webContents.setUserAgent(chromeUserAgent)
   })
 
-  resizeProviderView(window, view)
   return view
 }
 

@@ -41,6 +41,13 @@ const emptyState: SessionState = {
   title: null
 }
 const repositoryUrl = 'https://github.com/samzong/adit'
+const noteDateFormatter = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})
+type RunAction = (action: () => Promise<void>, options?: { reloadNotes?: boolean }) => Promise<void>
 
 export function App(): JSX.Element {
   if (!window.adit) {
@@ -72,22 +79,14 @@ function ElectronApp(): JSX.Element {
 
     async function boot(): Promise<void> {
       try {
-        const [nextNotes, nextState] = await Promise.all([
-          window.adit.listNotes({ archived, query }),
-          window.adit.getSessionState()
-        ])
+        const nextState = await window.adit.getSessionState()
 
         if (!cancelled) {
-          setNotes(nextNotes)
           setSessionState(nextState)
         }
       } catch (reason) {
         if (!cancelled) {
           setError(reason instanceof Error ? reason.message : 'Failed to load Adit.')
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
         }
       }
     }
@@ -99,11 +98,21 @@ function ElectronApp(): JSX.Element {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
     const timeout = window.setTimeout(() => {
-      void loadNotes().catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load notes.'))
+      void loadNotes()
+        .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load notes.'))
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false)
+          }
+        })
     }, 120)
 
-    return () => window.clearTimeout(timeout)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+    }
   }, [loadNotes])
 
   useEffect(() => {
@@ -121,13 +130,15 @@ function ElectronApp(): JSX.Element {
     return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
   }, [loadNotes])
 
-  async function runAction(action: () => Promise<void>): Promise<void> {
+  async function runAction(action: () => Promise<void>, options: { reloadNotes?: boolean } = {}): Promise<void> {
     setBusy(true)
     setError(null)
 
     try {
       await action()
-      await loadNotes()
+      if (options.reloadNotes) {
+        await loadNotes()
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Action failed.')
     } finally {
@@ -177,14 +188,7 @@ function ElectronApp(): JSX.Element {
 
 function VoiceRecommendation(): JSX.Element {
   return (
-    <HStack
-      align="center"
-      alignSelf="center"
-      color="muted"
-      gap="2.5"
-      justify="center"
-      mt="auto"
-    >
+    <HStack align="center" alignSelf="center" color="muted" gap="2.5" justify="center" mt="auto">
       <Icon as={Mic} boxSize="3.5" flexShrink="0" />
       <Text fontSize="xs" fontWeight="600">
         Adit works best when you speak to your AI instead of typing.
@@ -209,7 +213,7 @@ function VoiceRecommendation(): JSX.Element {
 
 interface TopBarProps {
   sessionState: SessionState
-  runAction: (action: () => Promise<void>) => Promise<void>
+  runAction: RunAction
   setSessionState: (state: SessionState) => void
 }
 
@@ -234,7 +238,15 @@ function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.
       backdropBlur="lg"
     >
       <Flex align="center" h="full" justify="flex-end" px="4" position="relative">
-        <Text color="headerMuted" fontSize="sm" fontWeight="700" left="50%" position="absolute" top="50%" transform="translate(-50%, -50%)">
+        <Text
+          color="headerMuted"
+          fontSize="sm"
+          fontWeight="700"
+          left="50%"
+          position="absolute"
+          top="50%"
+          transform="translate(-50%, -50%)"
+        >
           Adit
         </Text>
         {sessionState.mode !== 'list' && (
@@ -245,7 +257,14 @@ function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.
                 {sessionState.sessionUrl ? 'Captured' : 'Waiting'}
               </Text>
             </HStack>
-            <Text color="sessionHeaderMuted" fontSize="xs" maxW="360px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+            <Text
+              color="sessionHeaderMuted"
+              fontSize="xs"
+              maxW="360px"
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
               {providerLabel}
             </Text>
             <Tooltip.Root openDelay={350} closeDelay={100} positioning={{ placement: 'bottom-end' }}>
@@ -256,7 +275,9 @@ function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.
                   color="sessionActionFg"
                   fontSize="xs"
                   h="8"
-                  onClick={() => runAction(async () => setSessionState(await window.adit.closeSession()))}
+                  onClick={() => {
+                    void runAction(async () => setSessionState(await window.adit.closeSession()))
+                  }}
                   px="3"
                   _hover={{ bg: 'sessionActionHover' }}
                 >
@@ -285,7 +306,14 @@ interface NotesToolbarProps {
   setQuery: (value: string) => void
 }
 
-function NotesToolbar({ archived, providerFilter, query, setArchived, setProviderFilter, setQuery }: NotesToolbarProps): JSX.Element {
+function NotesToolbar({
+  archived,
+  providerFilter,
+  query,
+  setArchived,
+  setProviderFilter,
+  setQuery
+}: NotesToolbarProps): JSX.Element {
   const providerButtonProps = {
     borderWidth: '1px',
     fontSize: '2xs',
@@ -321,7 +349,10 @@ function NotesToolbar({ archived, providerFilter, query, setArchived, setProvide
             borderColor={providerFilter === 'chatgpt' ? 'accent' : 'transparent'}
             color={providerFilter === 'chatgpt' ? 'accentOn' : 'muted'}
             onClick={() => setProviderFilter(providerFilter === 'chatgpt' ? null : 'chatgpt')}
-            _hover={{ bg: providerFilter === 'chatgpt' ? 'accentHover' : 'actionHoverBg', color: providerFilter === 'chatgpt' ? 'accentOn' : 'fg' }}
+            _hover={{
+              bg: providerFilter === 'chatgpt' ? 'accentHover' : 'actionHoverBg',
+              color: providerFilter === 'chatgpt' ? 'accentOn' : 'fg'
+            }}
             {...providerButtonProps}
           >
             ChatGPT
@@ -332,7 +363,10 @@ function NotesToolbar({ archived, providerFilter, query, setArchived, setProvide
             borderColor={providerFilter === 'grok' ? 'accent' : 'transparent'}
             color={providerFilter === 'grok' ? 'accentOn' : 'muted'}
             onClick={() => setProviderFilter(providerFilter === 'grok' ? null : 'grok')}
-            _hover={{ bg: providerFilter === 'grok' ? 'accentHover' : 'actionHoverBg', color: providerFilter === 'grok' ? 'accentOn' : 'fg' }}
+            _hover={{
+              bg: providerFilter === 'grok' ? 'accentHover' : 'actionHoverBg',
+              color: providerFilter === 'grok' ? 'accentOn' : 'fg'
+            }}
             {...providerButtonProps}
           >
             Grok
@@ -367,7 +401,7 @@ interface NotesContentProps {
   busy: boolean
   loading: boolean
   notes: NoteRow[]
-  runAction: (action: () => Promise<void>) => Promise<void>
+  runAction: RunAction
   setSessionState: (state: SessionState) => void
 }
 
@@ -377,7 +411,15 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
   }
 
   return (
-    <Box as="ul" display="grid" gap="4" gridTemplateColumns="repeat(auto-fill, minmax(176px, 1fr))" listStyle="none" m="0" p="0">
+    <Box
+      as="ul"
+      display="grid"
+      gap="4"
+      gridTemplateColumns="repeat(auto-fill, minmax(176px, 1fr))"
+      listStyle="none"
+      m="0"
+      p="0"
+    >
       <Box as="li">
         <NewSessionCard busy={busy} runAction={runAction} setSessionState={setSessionState} />
       </Box>
@@ -387,16 +429,21 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
             archived={archived}
             busy={busy}
             note={note}
-            onArchive={() =>
-              runAction(async () => {
-                if (archived) {
-                  await window.adit.unarchiveNote({ id: note.id })
-                } else {
-                  await window.adit.archiveNote({ id: note.id })
-                }
-              })
-            }
-            onOpen={() => runAction(async () => setSessionState(await window.adit.openSession({ id: note.id })))}
+            onArchive={() => {
+              void runAction(
+                async () => {
+                  if (archived) {
+                    await window.adit.unarchiveNote({ id: note.id })
+                  } else {
+                    await window.adit.archiveNote({ id: note.id })
+                  }
+                },
+                { reloadNotes: true }
+              )
+            }}
+            onOpen={() => {
+              void runAction(async () => setSessionState(await window.adit.openSession({ id: note.id })))
+            }}
           />
         </Box>
       ))}
@@ -406,7 +453,7 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
 
 interface NewSessionCardProps {
   busy: boolean
-  runAction: (action: () => Promise<void>) => Promise<void>
+  runAction: RunAction
   setSessionState: (state: SessionState) => void
 }
 
@@ -438,7 +485,9 @@ function NewSessionCard({ busy, runAction, setSessionState }: NewSessionCardProp
             fontSize="xs"
             fontWeight="700"
             h="8"
-            onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))}
+            onClick={() => {
+              void runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))
+            }}
             px="3"
             _hover={{ bg: 'sessionActionHover' }}
           >
@@ -455,7 +504,9 @@ function NewSessionCard({ busy, runAction, setSessionState }: NewSessionCardProp
             fontSize="xs"
             fontWeight="700"
             h="8"
-            onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))}
+            onClick={() => {
+              void runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))
+            }}
             px="3"
             variant="plain"
             _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
@@ -535,7 +586,7 @@ function NoteCard({ archived, busy, note, onArchive, onOpen }: NoteCardProps): J
 
           <Stack gap="1" minW="0">
             <Text color="muted" overflow="hidden" textOverflow="ellipsis" textStyle="caption" whiteSpace="nowrap">
-              {note.session_url}
+              {formatSessionHost(note.session_url)}
             </Text>
           </Stack>
 
@@ -584,7 +635,15 @@ function NoteCard({ archived, busy, note, onArchive, onOpen }: NoteCardProps): J
           </Menu.Trigger>
           <Portal>
             <Menu.Positioner>
-              <Menu.Content bg="panel" borderColor="border" borderRadius="panel" minW="140px" p="1" shadow="cardHover" onClick={(event) => event.stopPropagation()}>
+              <Menu.Content
+                bg="panel"
+                borderColor="border"
+                borderRadius="panel"
+                minW="140px"
+                p="1"
+                shadow="cardHover"
+                onClick={(event) => event.stopPropagation()}
+              >
                 <Menu.Item
                   value={archived ? 'restore' : 'archive'}
                   onClick={(event) => {
@@ -608,16 +667,7 @@ function ProviderRibbon({ provider }: { provider: ProviderId }): JSX.Element {
   const isChatGPT = provider === 'chatgpt'
 
   return (
-    <Box
-      h="14"
-      left="0"
-      overflow="hidden"
-      pointerEvents="none"
-      position="absolute"
-      top="0"
-      w="14"
-      zIndex="1"
-    >
+    <Box h="14" left="0" overflow="hidden" pointerEvents="none" position="absolute" top="0" w="14" zIndex="1">
       <Box
         bg={isChatGPT ? 'providerChatgptBg' : 'providerGrokBg'}
         borderColor={isChatGPT ? 'providerChatgptBorder' : 'providerGrokBorder'}
@@ -694,7 +744,7 @@ function StatusNotice({ level, message }: ToastMessage): JSX.Element {
 function StandaloneNotice(): JSX.Element {
   return (
     <Box minH="100vh" bg="bg">
-      <TopBar runAction={async () => undefined} sessionState={emptyState} setSessionState={() => undefined} />
+      <TopBar runAction={() => Promise.resolve()} sessionState={emptyState} setSessionState={() => undefined} />
       <Container maxW="960px" py="5">
         <AditEmptyState
           description="The browser renderer is only a shell. SQLite, session capture, and provider windows run through Electron."
@@ -707,10 +757,17 @@ function StandaloneNotice(): JSX.Element {
 }
 
 function formatDate(value: number): string {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(value)
+  return noteDateFormatter.format(value)
+}
+
+function formatSessionHost(sessionUrl: string | null): string {
+  if (!sessionUrl) {
+    return ''
+  }
+
+  try {
+    return new URL(sessionUrl).hostname
+  } catch {
+    return ''
+  }
 }

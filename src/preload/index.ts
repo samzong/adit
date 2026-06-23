@@ -24,14 +24,16 @@ const api = {
   renameNote: (request: RenameNoteRequest): Promise<NoteRow> => ipcRenderer.invoke(IPC.notesRename, request),
   archiveNote: (request: ArchiveNoteRequest): Promise<NoteRow> => ipcRenderer.invoke(IPC.notesArchive, request),
   unarchiveNote: (request: ArchiveNoteRequest): Promise<NoteRow> => ipcRenderer.invoke(IPC.notesUnarchive, request),
-  createSession: (request: CreateSessionRequest): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionCreate, request),
+  createSession: (request: CreateSessionRequest): Promise<SessionState> =>
+    ipcRenderer.invoke(IPC.sessionCreate, request),
   openSession: (request: OpenSessionRequest): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionOpen, request),
   closeSession: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionClose),
   getSessionState: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionState),
   onNotesChanged: (handler: () => void): Unsubscribe => onChannel<void>(IPC.notesChanged, handler),
   onSessionStateChanged: (handler: (state: SessionState) => void): Unsubscribe =>
     onChannel<SessionState>(IPC.sessionStateChanged, handler),
-  onSessionTitleUpdated: (handler: (note: NoteRow) => void): Unsubscribe => onChannel<NoteRow>(IPC.sessionTitleUpdated, handler),
+  onSessionTitleUpdated: (handler: (note: NoteRow) => void): Unsubscribe =>
+    onChannel<NoteRow>(IPC.sessionTitleUpdated, handler),
   onLoginRequired: (handler: (provider: string) => void): Unsubscribe =>
     onChannel<string>(IPC.sessionLoginRequired, handler),
   onToast: (handler: (message: ToastMessage) => void): Unsubscribe => onChannel<ToastMessage>(IPC.appToast, handler)

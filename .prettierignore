@@ -1,0 +1,8 @@
+node_modules/
+out/
+dist/
+release/
+coverage/
+**/*.md
+pnpm-lock.yaml
+resources/entitlements.mac.plist

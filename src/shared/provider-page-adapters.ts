@@ -6,16 +6,7 @@ export interface ProviderPageAdapter {
   css: string
 }
 
-const providerSurfaceCss = `
-html,
-body {
-  background: #000 !important;
-}
-`
-
 const chatgptAdapterCss = `
-${providerSurfaceCss}
-
 :root {
   --sidebar-width: 0px !important;
   --sidebar-rail-width: 0px !important;
@@ -34,17 +25,9 @@ ${providerSurfaceCss}
 `
 
 const grokAdapterCss = `
-${providerSurfaceCss}
-
 :root {
   --sidebar-width: 0px !important;
   --sidebar-width-icon: 0px !important;
-}
-
-body:has(#grok-content-area),
-body div:has(> #grok-content-area),
-#grok-content-area {
-  background: #000 !important;
 }
 
 body div:has(> #grok-content-area) > :not(#grok-content-area) {
@@ -76,5 +59,9 @@ export const providerPageAdapters = [
 ] satisfies ProviderPageAdapter[]
 
 export function providerPageAdapterForHost(hostname: string): ProviderPageAdapter | null {
-  return providerPageAdapters.find((adapter) => adapter.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))) ?? null
+  return (
+    providerPageAdapters.find((adapter) =>
+      adapter.hosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
+    ) ?? null
+  )
 }

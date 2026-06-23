@@ -20,25 +20,18 @@ const config = defineConfig({
     body: {
       color: 'fg',
       bg: 'bg',
-      colorScheme: 'inherit',
-      fontSynthesis: 'none',
-      textRendering: 'optimizeLegibility',
-      WebkitFontSmoothing: 'antialiased'
+      colorScheme: 'inherit'
     },
     '.app-toolbar': {
       userSelect: 'none'
-    },
-    '.app-region-drag': {
-      WebkitAppRegion: 'drag'
-    },
-    '.app-region-no-drag': {
-      WebkitAppRegion: 'no-drag'
     }
   },
   theme: {
     tokens: {
       fonts: {
-        heading: { value: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+        heading: {
+          value: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        },
         body: { value: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }
       },
       colors: {

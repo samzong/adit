@@ -13,12 +13,12 @@ Before UI work, read `docs/DESIGN.md`; if code and docs disagree, verify the liv
 ## Shell UI Stack
 
 - Use Chakra UI for the Adit shell UI.
-- Do not introduce handwritten CSS files for shell UI styling.
+- Do not introduce handwritten CSS files for shell UI styling. The single exception is `src/renderer/src/platform.css`, which holds Electron platform integration styles only (drag/no-drag regions, font smoothing). These use vendor-prefixed properties (`-webkit-app-region`, `-webkit-font-smoothing`) that Chakra's `SystemStyleObject` cannot model, so they cannot live in `globalCss`. Keep `platform.css` limited to platform hooks — no layout, colors, or visual styling belongs there.
 - Keep global renderer styling in `src/renderer/src/theme.ts` via Chakra `globalCss`.
 - Keep colors, shadows, text styles, radii, and reusable visual decisions in Chakra theme tokens or semantic tokens.
 - Prefer Chakra props, `textStyle`, semantic tokens, and component variants over inline CSS values.
 - Do not solve layout problems with one-off raw pixel offsets. If Chakra or the platform does not expose a clean layout primitive, remove the conflicting UI element instead of hand-positioning it.
-- The only accepted class hooks in shell UI are platform integration hooks such as Electron drag/no-drag regions, and their styles must live in Chakra `globalCss`.
+- The only accepted class hooks in shell UI are platform integration hooks such as Electron drag/no-drag regions; their styles live in `src/renderer/src/platform.css`.
 
 ## macOS Visual Direction
 
