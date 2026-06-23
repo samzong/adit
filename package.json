@@ -1,23 +1,25 @@
 {
   "name": "adit",
   "version": "0.1.0",
-  "description": "A local macOS shell for resumable ChatGPT and Grok web conversation entrances.",
+  "description": "A local macOS shell for resumable LLM web conversation entrances.",
   "author": "Samzong",
+  "license": "MIT",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "pack:mac": "pnpm build && electron-builder --mac --dir",
-    "dist:mac": "pnpm build && electron-builder --mac dmg",
+    "pack:mac": "pnpm build && electron-builder --mac --dir --publish never",
+    "dist:mac:arm64": "pnpm build && electron-builder --mac dmg --arm64 --publish never",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
     "rebuild:native": "electron-builder install-app-deps",
+    "release:check": "node scripts/check-release-tag.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json}\" \"*.{ts,js,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\" \"*.{ts,js,json}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.{yml,yaml}\" \"*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.{yml,yaml}\" \"*.{ts,js,json}\""
   },
   "dependencies": {
     "@chakra-ui/react": "^3.36.0",
