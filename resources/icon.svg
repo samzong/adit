@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Adit app icon">
+  <defs>
+    <linearGradient id="bg" x1="176" y1="96" x2="848" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f6b5f"/>
+      <stop offset="0.58" stop-color="#123f39"/>
+      <stop offset="1" stop-color="#081c19"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="224" y1="230" x2="800" y2="850" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf5"/>
+      <stop offset="1" stop-color="#e9ece4"/>
+    </linearGradient>
+    <linearGradient id="tunnel" x1="512" y1="368" x2="512" y2="838" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07110f"/>
+      <stop offset="1" stop-color="#020706"/>
+    </linearGradient>
+    <linearGradient id="path" x1="512" y1="574" x2="512" y2="914" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8af8dd"/>
+      <stop offset="0.42" stop-color="#42b99f"/>
+      <stop offset="1" stop-color="#174b43"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="588" r="168" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7cffdf" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#42d4b6" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#42d4b6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#010504" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="72" y="72" width="880" height="880" rx="196" fill="url(#bg)"/>
+  <rect x="96" y="96" width="832" height="832" rx="172" fill="none" stroke="#76d4c2" stroke-opacity="0.12" stroke-width="4"/>
+
+  <path
+    d="M182 816 366 292c45-128 247-128 292 0l184 524H692L560 424c-16-47-80-47-96 0L332 816Z"
+    fill="url(#mark)"
+    filter="url(#softShadow)"
+  />
+
+  <path
+    d="M394 816V532c0-65 53-118 118-118s118 53 118 118v284H394Z"
+    fill="url(#tunnel)"
+  />
+  <path
+    d="M442 816V550c0-39 31-70 70-70s70 31 70 70v266H442Z"
+    fill="#09241f"
+  />
+  <path
+    d="M482 816V592c0-17 13-30 30-30s30 13 30 30v224H482Z"
+    fill="#03100e"
+  />
+
+  <circle cx="512" cy="600" r="168" fill="url(#glow)"/>
+  <rect x="480" y="558" width="64" height="102" rx="32" fill="#92ffe4"/>
+  <path d="M512 640 710 928H314Z" fill="url(#path)" opacity="0.9"/>
+  <path d="M512 640 610 928H414Z" fill="#b8ffec" opacity="0.24"/>
+</svg>

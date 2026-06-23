@@ -2,12 +2,16 @@
   "name": "adit",
   "version": "0.1.0",
   "description": "A local macOS shell for resumable ChatGPT and Grok web conversation entrances.",
+  "author": "Samzong",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "pack:mac": "pnpm build && electron-builder --mac --dir",
+    "dist:mac": "pnpm build && electron-builder --mac dmg",
     "preview": "electron-vite preview",
-    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild:native": "electron-builder install-app-deps",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
@@ -22,7 +26,6 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.0.4",
     "@types/react": "^18.3.23",

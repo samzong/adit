@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
 
-const HEADER_HEIGHT = 52
+const HEADER_HEIGHT = 44
 const chromeUserAgent =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
 
@@ -16,6 +16,8 @@ export function createProviderView(window: BrowserWindow, provider: ProviderConf
   const view = new WebContentsView({
     webPreferences: providerWebPreferences(provider)
   })
+
+  view.setBackgroundColor('#000000')
 
   view.webContents.setUserAgent(chromeUserAgent)
   view.webContents.setWindowOpenHandler(({ url }) => {

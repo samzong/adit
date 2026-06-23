@@ -1,5 +1,4 @@
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -11,12 +10,27 @@ import {
   Icon,
   IconButton,
   Input,
-  SegmentGroup,
+  Menu,
+  Portal,
   Stack,
-  Text
+  Text,
+  Tooltip
 } from '@chakra-ui/react'
-import { Archive, Circle, Clock3, FileText, FolderOpen, MessageSquare, RotateCcw, Search, Sparkles } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  Archive,
+  ArrowRight,
+  Circle,
+  Clock3,
+  ExternalLink,
+  FolderOpen,
+  MessageSquare,
+  Mic,
+  MoreHorizontal,
+  RotateCcw,
+  Search,
+  Sparkles
+} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import type { NoteRow, ProviderId, SessionState, ToastMessage } from '../../shared/types'
 
 const emptyState: SessionState = {
@@ -26,11 +40,7 @@ const emptyState: SessionState = {
   sessionUrl: null,
   title: null
 }
-
-const viewItems = [
-  { label: 'Active', value: 'active' },
-  { label: 'Archive', value: 'archive' }
-]
+const repositoryUrl = 'https://github.com/samzong/adit'
 
 export function App(): JSX.Element {
   if (!window.adit) {
@@ -44,6 +54,7 @@ function ElectronApp(): JSX.Element {
   const [notes, setNotes] = useState<NoteRow[]>([])
   const [archived, setArchived] = useState(false)
   const [query, setQuery] = useState('')
+  const [providerFilter, setProviderFilter] = useState<ProviderId | null>(null)
   const [sessionState, setSessionState] = useState<SessionState>(emptyState)
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const [loading, setLoading] = useState(true)
@@ -124,19 +135,25 @@ function ElectronApp(): JSX.Element {
     }
   }
 
+  const visibleNotes = providerFilter ? notes.filter((note) => note.provider === providerFilter) : notes
+
   return (
     <Box minH="100vh" bg="bg" color="fg">
-      <TopBar busy={busy} sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
+      <TopBar sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
 
       {sessionState.mode === 'list' && (
-        <Container maxW="960px" py="4">
-          <Stack gap="3.5">
-            <NotesToolbar archived={archived} query={query} setArchived={setArchived} setQuery={setQuery} />
+        <Container display="flex" flexDirection="column" maxW="960px" minH="calc(100vh - 44px)" px="4" pb="4" pt="5">
+          <Stack flex="1" gap="5">
+            <NotesToolbar
+              archived={archived}
+              providerFilter={providerFilter}
+              query={query}
+              setArchived={setArchived}
+              setProviderFilter={setProviderFilter}
+              setQuery={setQuery}
+            />
 
             <Stack gap="2">
-              <Text color="muted" fontSize="xs">
-                Email/password sign-in only.
-              </Text>
               {error && <StatusNotice level="error" message={error} />}
               {toast && <StatusNotice level={toast.level} message={toast.message} />}
             </Stack>
@@ -145,10 +162,12 @@ function ElectronApp(): JSX.Element {
               archived={archived}
               busy={busy}
               loading={loading}
-              notes={notes}
+              notes={visibleNotes}
               runAction={runAction}
               setSessionState={setSessionState}
             />
+
+            <VoiceRecommendation />
           </Stack>
         </Container>
       )}
@@ -156,30 +175,50 @@ function ElectronApp(): JSX.Element {
   )
 }
 
+function VoiceRecommendation(): JSX.Element {
+  return (
+    <HStack
+      align="center"
+      alignSelf="center"
+      color="muted"
+      gap="2.5"
+      justify="center"
+      mt="auto"
+    >
+      <Icon as={Mic} boxSize="3.5" flexShrink="0" />
+      <Text fontSize="xs" fontWeight="600">
+        Adit works best when you speak to your AI instead of typing.
+      </Text>
+      <Button
+        asChild
+        color="actionFg"
+        fontSize="xs"
+        h="6"
+        px="2"
+        variant="ghost"
+        _hover={{ bg: 'actionHoverBg', color: 'fg' }}
+      >
+        <a href={repositoryUrl} rel="noreferrer" target="_blank">
+          GitHub
+          <Icon as={ExternalLink} boxSize="3" />
+        </a>
+      </Button>
+    </HStack>
+  )
+}
+
 interface TopBarProps {
-  busy: boolean
   sessionState: SessionState
   runAction: (action: () => Promise<void>) => Promise<void>
   setSessionState: (state: SessionState) => void
 }
 
-function TopBar({ busy, sessionState, runAction, setSessionState }: TopBarProps): JSX.Element {
+function TopBar({ sessionState, runAction, setSessionState }: TopBarProps): JSX.Element {
   const inSession = sessionState.mode !== 'list'
-  const activeTitle = useMemo(() => {
-    if (sessionState.title) {
-      return sessionState.title
-    }
-
-    if (sessionState.provider === 'chatgpt') {
-      return 'ChatGPT'
-    }
-
-    if (sessionState.provider === 'grok') {
-      return 'Grok'
-    }
-
-    return 'Adit'
-  }, [sessionState.provider, sessionState.title])
+  const providerLabel = sessionState.provider === 'chatgpt' ? 'ChatGPT' : 'Grok'
+  const backTooltip = sessionState.sessionUrl
+    ? "Leaving this view won't interrupt the current reply."
+    : 'Adit saves this session after its conversation URL is created.'
 
   return (
     <Box
@@ -187,72 +226,19 @@ function TopBar({ busy, sessionState, runAction, setSessionState }: TopBarProps)
       bg={inSession ? 'sessionHeaderBg' : 'headerBg'}
       borderBottomWidth="1px"
       borderColor={inSession ? 'sessionHeaderBorder' : 'headerBorder'}
+      className="app-toolbar app-region-drag"
       color="fg"
-      h="52px"
+      h="44px"
       position="relative"
       zIndex="10"
-      backdropFilter="blur(18px)"
+      backdropBlur="lg"
     >
-      <Flex align="center" h="full" justify="space-between" px="4.5">
-        <HStack gap="2.5">
-          <Flex
-            align="center"
-            bg="accent"
-            borderRadius="md"
-            color="accentContrast"
-            fontSize="xs"
-            fontWeight="bold"
-            h="7"
-            justify="center"
-            w="7"
-          >
-            A
-          </Flex>
-          <Box>
-            <Heading fontSize="sm" fontWeight="700" letterSpacing="0" lineHeight="1.05">
-              Adit
-            </Heading>
-            {!inSession && (
-              <Text color="headerMuted" fontSize="xs" lineHeight="1.2">
-                Local conversation entrances.
-              </Text>
-            )}
-          </Box>
-        </HStack>
-
-        {sessionState.mode === 'list' ? (
-          <HStack gap="2">
-            <Button
-              bg="accent"
-              color="accentContrast"
-              disabled={busy}
-              onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))}
-              fontSize="xs"
-              h="8"
-              px="3"
-              _hover={{ bg: 'accentHover' }}
-            >
-              <Icon as={MessageSquare} />
-              New ChatGPT
-            </Button>
-            <Button
-              disabled={busy}
-              fontSize="xs"
-              h="8"
-              onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))}
-              px="3"
-              variant="outline"
-              borderColor="actionBorder"
-              color="actionFg"
-              _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
-              _hover={{ bg: 'actionHoverBg' }}
-            >
-              <Icon as={Sparkles} />
-              New Grok
-            </Button>
-          </HStack>
-        ) : (
-          <HStack gap="3">
+      <Flex align="center" h="full" justify="flex-end" px="4" position="relative">
+        <Text color="headerMuted" fontSize="sm" fontWeight="700" left="50%" position="absolute" top="50%" transform="translate(-50%, -50%)">
+          Adit
+        </Text>
+        {sessionState.mode !== 'list' && (
+          <HStack className="app-region-no-drag" gap="3">
             <HStack color={sessionState.sessionUrl ? 'capturedFg' : 'waitingFg'} gap="1.5">
               <Icon as={Circle} boxSize="2" fill="currentColor" />
               <Text fontSize="xs" fontWeight="600">
@@ -260,20 +246,29 @@ function TopBar({ busy, sessionState, runAction, setSessionState }: TopBarProps)
               </Text>
             </HStack>
             <Text color="sessionHeaderMuted" fontSize="xs" maxW="360px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-              {activeTitle}
+              {providerLabel}
             </Text>
-            <Button
-              bg="sessionActionBg"
-              color="sessionActionFg"
-              disabled={busy}
-              fontSize="xs"
-              h="8"
-              onClick={() => runAction(async () => setSessionState(await window.adit.closeSession()))}
-              px="3"
-              _hover={{ bg: 'sessionActionHover' }}
-            >
-              Close
-            </Button>
+            <Tooltip.Root openDelay={350} closeDelay={100} positioning={{ placement: 'bottom-end' }}>
+              <Tooltip.Trigger asChild>
+                <Button
+                  bg="sessionActionBg"
+                  borderRadius="md"
+                  color="sessionActionFg"
+                  fontSize="xs"
+                  h="8"
+                  onClick={() => runAction(async () => setSessionState(await window.adit.closeSession()))}
+                  px="3"
+                  _hover={{ bg: 'sessionActionHover' }}
+                >
+                  Back
+                </Button>
+              </Tooltip.Trigger>
+              <Portal>
+                <Tooltip.Positioner>
+                  <Tooltip.Content>{backTooltip}</Tooltip.Content>
+                </Tooltip.Positioner>
+              </Portal>
+            </Tooltip.Root>
           </HStack>
         )}
       </Flex>
@@ -283,38 +278,86 @@ function TopBar({ busy, sessionState, runAction, setSessionState }: TopBarProps)
 
 interface NotesToolbarProps {
   archived: boolean
+  providerFilter: ProviderId | null
   query: string
   setArchived: (value: boolean) => void
+  setProviderFilter: (value: ProviderId | null) => void
   setQuery: (value: string) => void
 }
 
-function NotesToolbar({ archived, query, setArchived, setQuery }: NotesToolbarProps): JSX.Element {
+function NotesToolbar({ archived, providerFilter, query, setArchived, setProviderFilter, setQuery }: NotesToolbarProps): JSX.Element {
+  const providerButtonProps = {
+    borderWidth: '1px',
+    fontSize: '2xs',
+    fontWeight: '700',
+    h: '7',
+    minW: '72px',
+    px: '2.5',
+    variant: 'plain' as const
+  }
+
   return (
     <Flex align="center" gap="3" justify="space-between">
-      <HStack flex="1" maxW="380px" position="relative">
-        <Icon as={Search} boxSize="4" color="muted" left="3" position="absolute" zIndex="1" />
-        <Input
-          bg="panel"
-          borderColor="border"
-          borderRadius="md"
-          fontSize="sm"
-          h="9"
-          _focus={{ borderColor: 'focusRing' }}
-          onChange={(event) => setQuery(event.target.value)}
-          pl="9"
-          placeholder="Search titles"
-          value={query}
-        />
+      <HStack flex="1" gap="2" minW="0">
+        <HStack flex="1" maxW="380px" minW="240px" position="relative">
+          <Icon as={Search} boxSize="4" color="muted" left="3" pointerEvents="none" position="absolute" zIndex="1" />
+          <Input
+            bg="panelMuted"
+            borderColor="transparent"
+            borderRadius="md"
+            fontSize="sm"
+            h="8"
+            _focus={{ bg: 'panel', borderColor: 'focusRing' }}
+            onChange={(event) => setQuery(event.target.value)}
+            pl="9"
+            placeholder="Search titles"
+            value={query}
+          />
+        </HStack>
+        <HStack bg="panelMuted" borderColor="border" borderRadius="md" borderWidth="1px" gap="0.5" h="8" p="0.5">
+          <Button
+            aria-pressed={providerFilter === 'chatgpt'}
+            bg={providerFilter === 'chatgpt' ? 'accent' : 'transparent'}
+            borderColor={providerFilter === 'chatgpt' ? 'accent' : 'transparent'}
+            color={providerFilter === 'chatgpt' ? 'accentOn' : 'muted'}
+            onClick={() => setProviderFilter(providerFilter === 'chatgpt' ? null : 'chatgpt')}
+            _hover={{ bg: providerFilter === 'chatgpt' ? 'accentHover' : 'actionHoverBg', color: providerFilter === 'chatgpt' ? 'accentOn' : 'fg' }}
+            {...providerButtonProps}
+          >
+            ChatGPT
+          </Button>
+          <Button
+            aria-pressed={providerFilter === 'grok'}
+            bg={providerFilter === 'grok' ? 'accent' : 'transparent'}
+            borderColor={providerFilter === 'grok' ? 'accent' : 'transparent'}
+            color={providerFilter === 'grok' ? 'accentOn' : 'muted'}
+            onClick={() => setProviderFilter(providerFilter === 'grok' ? null : 'grok')}
+            _hover={{ bg: providerFilter === 'grok' ? 'accentHover' : 'actionHoverBg', color: providerFilter === 'grok' ? 'accentOn' : 'fg' }}
+            {...providerButtonProps}
+          >
+            Grok
+          </Button>
+        </HStack>
       </HStack>
 
-      <SegmentGroup.Root
-        onValueChange={(details) => setArchived(details.value === 'archive')}
-        size="xs"
-        value={archived ? 'archive' : 'active'}
+      <Button
+        aria-pressed={archived}
+        bg={archived ? 'accent' : 'panelMuted'}
+        borderColor={archived ? 'accent' : 'border'}
+        borderRadius="md"
+        borderWidth="1px"
+        color={archived ? 'accentOn' : 'actionFg'}
+        fontSize="xs"
+        fontWeight="700"
+        h="8"
+        minW="72px"
+        onClick={() => setArchived(!archived)}
+        px="3"
+        variant="plain"
+        _hover={{ bg: archived ? 'accentHover' : 'actionHoverBg', color: archived ? 'accentOn' : 'fg' }}
       >
-        <SegmentGroup.Indicator />
-        <SegmentGroup.Items items={viewItems} />
-      </SegmentGroup.Root>
+        Archive
+      </Button>
     </Flex>
   )
 }
@@ -333,22 +376,11 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
     return <AditEmptyState description="Loading local session entrances..." icon={<Sparkles />} title="Loading notes" />
   }
 
-  if (notes.length === 0) {
-    return (
-      <AditEmptyState
-        description={
-          archived
-            ? 'Archived sessions will appear here after you move them out of the main list.'
-            : 'Start a ChatGPT or Grok session. Adit saves it only after the provider creates a conversation URL.'
-        }
-        icon={archived ? <Archive /> : <FileText />}
-        title={archived ? 'No archived notes' : 'No saved sessions yet'}
-      />
-    )
-  }
-
   return (
-    <Stack as="ul" gap="2.5" listStyle="none" m="0" p="0">
+    <Box as="ul" display="grid" gap="4" gridTemplateColumns="repeat(auto-fill, minmax(176px, 1fr))" listStyle="none" m="0" p="0">
+      <Box as="li">
+        <NewSessionCard busy={busy} runAction={runAction} setSessionState={setSessionState} />
+      </Box>
       {notes.map((note) => (
         <Box as="li" key={note.id}>
           <NoteCard
@@ -365,18 +397,76 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
               })
             }
             onOpen={() => runAction(async () => setSessionState(await window.adit.openSession({ id: note.id })))}
-            onRename={() => {
-              const title = window.prompt('Rename note', note.title)
-              if (title) {
-                void runAction(async () => {
-                  await window.adit.renameNote({ id: note.id, title })
-                })
-              }
-            }}
           />
         </Box>
       ))}
-    </Stack>
+    </Box>
+  )
+}
+
+interface NewSessionCardProps {
+  busy: boolean
+  runAction: (action: () => Promise<void>) => Promise<void>
+  setSessionState: (state: SessionState) => void
+}
+
+function NewSessionCard({ busy, runAction, setSessionState }: NewSessionCardProps): JSX.Element {
+  return (
+    <Card.Root
+      aspectRatio="1.32"
+      bg="panel"
+      borderColor="border"
+      borderRadius="panel"
+      shadow="card"
+      size="sm"
+      transition="border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease"
+      variant="outline"
+      _hover={{
+        bg: 'cardHoverBg',
+        borderColor: 'accent',
+        shadow: 'cardHover',
+        transform: 'translateY(-2px)'
+      }}
+    >
+      <Card.Body alignItems="center" display="flex" justifyContent="center" p="3">
+        <Stack gap="2" maxW="240px" w="full">
+          <Button
+            bg="sessionActionBg"
+            borderRadius="md"
+            color="sessionActionFg"
+            disabled={busy}
+            fontSize="xs"
+            fontWeight="700"
+            h="8"
+            onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'chatgpt' })))}
+            px="3"
+            _hover={{ bg: 'sessionActionHover' }}
+          >
+            <Icon as={MessageSquare} boxSize="4" />
+            New ChatGPT
+          </Button>
+          <Button
+            bg="panelMuted"
+            borderColor="actionBorder"
+            borderRadius="md"
+            borderWidth="1px"
+            color="actionFg"
+            disabled={busy}
+            fontSize="xs"
+            fontWeight="700"
+            h="8"
+            onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))}
+            px="3"
+            variant="plain"
+            _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
+            _hover={{ bg: 'actionHoverBg' }}
+          >
+            <Icon as={Sparkles} boxSize="4" />
+            New Grok
+          </Button>
+        </Stack>
+      </Card.Body>
+    </Card.Root>
   )
 }
 
@@ -386,108 +476,169 @@ interface NoteCardProps {
   note: NoteRow
   onArchive: () => void
   onOpen: () => void
-  onRename: () => void
 }
 
-function NoteCard({ archived, busy, note, onArchive, onOpen, onRename }: NoteCardProps): JSX.Element {
-  const accentColor = note.provider === 'chatgpt' ? 'green.300' : 'purple.300'
+function NoteCard({ archived, busy, note, onArchive, onOpen }: NoteCardProps): JSX.Element {
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <Card.Root
-      bg="panel"
+      aria-label={`Open ${note.title}`}
+      aspectRatio="1.32"
+      bg="cardBg"
       borderColor="border"
-      borderLeftColor={accentColor}
-      borderLeftWidth="3px"
       borderRadius="panel"
+      cursor="pointer"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) {
+          return
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
       overflow="hidden"
+      position="relative"
+      role="button"
+      shadow="card"
       size="sm"
+      tabIndex={0}
       transition="border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease"
       variant="outline"
+      _focusVisible={{ borderColor: 'focusRing', outline: 'none', shadow: 'focus' }}
+      _focusWithin={{
+        '& [data-note-actions]': {
+          opacity: 1,
+          pointerEvents: 'auto'
+        }
+      }}
       _hover={{
+        bg: 'cardHoverBg',
         borderColor: 'accent',
-        boxShadow: '0 10px 26px rgba(15, 23, 42, 0.07)',
-        transform: 'translateY(-1px)',
-        _dark: { boxShadow: '0 12px 30px rgba(0, 0, 0, 0.32)' }
+        shadow: 'cardHover',
+        transform: 'translateY(-2px)',
+        '& [data-note-actions]': {
+          opacity: 1,
+          pointerEvents: 'auto'
+        }
       }}
     >
-      <Card.Body px="4" py="3">
-        <Flex align="center" gap="4" justify="space-between">
-          <Button
-            alignItems="stretch"
-            aria-label={`Open ${note.title}`}
-            bg="transparent"
-            color="inherit"
-            flex="1"
-            h="auto"
-            justifyContent="stretch"
-            minW="0"
-            onClick={onOpen}
-            p="0"
-            textAlign="left"
-            variant="plain"
-            _hover={{ bg: 'transparent' }}
-          >
-            <Stack align="stretch" gap="2" minW="0" w="full">
-              <HStack gap="2.5">
-                <ProviderBadge provider={note.provider} />
-                <HStack color="muted" gap="1.5" minW="0">
-                  <Icon as={Clock3} boxSize="3" />
-                  <Text fontSize="xs">{formatDate(note.updated_at)}</Text>
-                </HStack>
-              </HStack>
+      <ProviderRibbon provider={note.provider} />
+      <Card.Body p="3">
+        <Stack gap="2.5" h="full" justify="space-between" minW="0">
+          <Heading lineClamp="2" minW="0" overflow="hidden" pl="10" pr="8" textStyle="headline">
+            {note.title}
+          </Heading>
 
-              <Stack gap="0.5" minW="0">
-                <Heading fontSize="md" fontWeight="700" letterSpacing="0" lineHeight="1.2" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                  {note.title}
-                </Heading>
-                <Text color="muted" fontSize="xs" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-                  {note.session_url}
-                </Text>
-              </Stack>
-            </Stack>
-          </Button>
+          <Stack gap="1" minW="0">
+            <Text color="muted" overflow="hidden" textOverflow="ellipsis" textStyle="caption" whiteSpace="nowrap">
+              {note.session_url}
+            </Text>
+          </Stack>
 
-          <HStack align="center" flexShrink="0" gap="1.5">
-            <Button
-              borderColor="actionBorder"
-              color="actionFg"
-              disabled={busy}
-              fontSize="xs"
-              h="7"
-              onClick={onRename}
-              px="2.5"
-              size="xs"
-              variant="outline"
-              _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
-              _hover={{ bg: 'actionHoverBg' }}
-            >
-              Rename
-            </Button>
-            <IconButton
-              aria-label={archived ? 'Restore note' : 'Archive note'}
-              bg="subtleActionBg"
-              color="subtleActionFg"
-              disabled={busy}
-              onClick={onArchive}
-              size="xs"
-              variant="subtle"
-              _disabled={{ color: 'actionDisabledFg', opacity: 1 }}
-              _hover={{ bg: 'subtleActionHoverBg' }}
-            >
-              <Icon as={archived ? RotateCcw : Archive} boxSize="3.5" />
-            </IconButton>
-          </HStack>
-        </Flex>
+          <Box borderTopColor="border" borderTopWidth="1px" />
+
+          <Flex align="center" color="muted" gap="2" justify="space-between" minW="0">
+            <HStack gap="1.5" minW="0">
+              <Icon as={Clock3} boxSize="3" />
+              <Text overflow="hidden" textOverflow="ellipsis" textStyle="caption" whiteSpace="nowrap">
+                {formatDate(note.updated_at)}
+              </Text>
+            </HStack>
+            <HStack color="accent" flexShrink="0" gap="1">
+              <Text fontSize="xs" fontWeight="700">
+                Open
+              </Text>
+              <Icon as={ArrowRight} boxSize="3" />
+            </HStack>
+          </Flex>
+        </Stack>
       </Card.Body>
+      <Box
+        data-note-actions=""
+        opacity={menuOpen ? 1 : 0}
+        pointerEvents={menuOpen ? 'auto' : 'none'}
+        position="absolute"
+        right="2"
+        top="2"
+        transition="opacity 120ms ease"
+      >
+        <Menu.Root onOpenChange={(details) => setMenuOpen(details.open)} positioning={{ placement: 'bottom-end' }}>
+          <Menu.Trigger asChild>
+            <IconButton
+              aria-label="Note actions"
+              color="muted"
+              disabled={busy}
+              minW="6"
+              onClick={(event) => event.stopPropagation()}
+              size="2xs"
+              variant="ghost"
+              _disabled={{ color: 'actionDisabledFg', opacity: 1 }}
+              _hover={{ bg: 'actionHoverBg', color: 'fg' }}
+            >
+              <Icon as={MoreHorizontal} boxSize="3.5" />
+            </IconButton>
+          </Menu.Trigger>
+          <Portal>
+            <Menu.Positioner>
+              <Menu.Content bg="panel" borderColor="border" borderRadius="panel" minW="140px" p="1" shadow="cardHover" onClick={(event) => event.stopPropagation()}>
+                <Menu.Item
+                  value={archived ? 'restore' : 'archive'}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onArchive()
+                  }}
+                >
+                  <Icon as={archived ? RotateCcw : Archive} boxSize="3.5" />
+                  <Text textStyle="caption">{archived ? 'Restore' : 'Archive'}</Text>
+                </Menu.Item>
+              </Menu.Content>
+            </Menu.Positioner>
+          </Portal>
+        </Menu.Root>
+      </Box>
     </Card.Root>
   )
 }
 
-function ProviderBadge({ provider }: { provider: ProviderId }): JSX.Element {
+function ProviderRibbon({ provider }: { provider: ProviderId }): JSX.Element {
+  const isChatGPT = provider === 'chatgpt'
+
   return (
-    <Badge colorPalette={provider === 'chatgpt' ? 'green' : 'purple'} fontSize="2xs" h="5" px="1.5" variant="subtle">
-      {provider === 'chatgpt' ? 'ChatGPT' : 'Grok'}
-    </Badge>
+    <Box
+      h="14"
+      left="0"
+      overflow="hidden"
+      pointerEvents="none"
+      position="absolute"
+      top="0"
+      w="14"
+      zIndex="1"
+    >
+      <Box
+        bg={isChatGPT ? 'providerChatgptBg' : 'providerGrokBg'}
+        borderColor={isChatGPT ? 'providerChatgptBorder' : 'providerGrokBorder'}
+        borderWidth="1px"
+        color={isChatGPT ? 'providerChatgptFg' : 'providerGrokFg'}
+        fontSize="2xs"
+        fontWeight="700"
+        left="-8"
+        letterSpacing="0"
+        lineHeight="1"
+        position="absolute"
+        py="1"
+        textAlign="center"
+        top="3"
+        transform="rotate(-45deg)"
+        transformOrigin="center"
+        w="24"
+      >
+        {isChatGPT ? 'ChatGPT' : 'Grok'}
+      </Box>
+    </Box>
   )
 }
 
@@ -543,7 +694,7 @@ function StatusNotice({ level, message }: ToastMessage): JSX.Element {
 function StandaloneNotice(): JSX.Element {
   return (
     <Box minH="100vh" bg="bg">
-      <TopBar busy={false} runAction={async () => undefined} sessionState={emptyState} setSessionState={() => undefined} />
+      <TopBar runAction={async () => undefined} sessionState={emptyState} setSessionState={() => undefined} />
       <Container maxW="960px" py="5">
         <AditEmptyState
           description="The browser renderer is only a shell. SQLite, session capture, and provider windows run through Electron."

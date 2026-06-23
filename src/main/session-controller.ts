@@ -1,4 +1,4 @@
-import { BrowserWindow, type WebContentsView } from 'electron'
+import type { BrowserWindow, WebContentsView } from 'electron'
 import { IPC } from '../shared/ipc'
 import type { NoteRow, ProviderId, SessionState } from '../shared/types'
 import type { NoteStore } from './db/notes'
@@ -28,7 +28,7 @@ export class SessionController {
     this.close()
 
     const provider = getProvider(providerId)
-    const view = this.createView(provider)
+    const view = createProviderView(this.window, provider)
     const active: ActiveSession = {
       provider,
       view,
@@ -46,6 +46,10 @@ export class SessionController {
     try {
       await view.webContents.loadURL(provider.homeUrl)
     } catch (reason) {
+      if (this.active !== active) {
+        return this.getState()
+      }
+
       this.clearActive(active)
       throw reason
     }
@@ -73,7 +77,7 @@ export class SessionController {
       throw new Error('Session URL is outside provider allowlist')
     }
 
-    const view = this.createView(provider)
+    const view = createProviderView(this.window, provider)
     const active: ActiveSession = {
       provider,
       view,
@@ -91,6 +95,10 @@ export class SessionController {
     try {
       await view.webContents.loadURL(note.session_url)
     } catch (reason) {
+      if (this.active !== active) {
+        return this.getState()
+      }
+
       this.clearActive(active)
       throw reason
     }
@@ -152,10 +160,6 @@ export class SessionController {
       sessionUrl: this.active.sessionUrl,
       title: this.active.title
     }
-  }
-
-  private createView(provider: ProviderConfig): WebContentsView {
-    return createProviderView(this.window, provider)
   }
 
   private clearActive(active: ActiveSession): void {

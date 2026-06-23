@@ -2,10 +2,25 @@ appId: com.samzong.adit
 productName: Adit
 directories:
   buildResources: resources
+  output: dist
 files:
   - out/**
   - package.json
+asar: true
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
 mac:
   category: public.app-category.productivity
+  icon: resources/icon.icns
+  identity: null
   target:
-    - dmg
+    - target: dmg
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
