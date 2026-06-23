@@ -1,0 +1,11 @@
+appId: com.samzong.adit
+productName: Adit
+directories:
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
