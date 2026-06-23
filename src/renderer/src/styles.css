@@ -12,12 +12,17 @@ body,
 
 html {
   font-size: 14px;
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
   color: var(--chakra-colors-fg);
   background: var(--chakra-colors-bg);
-  color-scheme: light dark;
+  color-scheme: inherit;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

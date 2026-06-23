@@ -242,6 +242,10 @@ function TopBar({ busy, sessionState, runAction, setSessionState }: TopBarProps)
               onClick={() => runAction(async () => setSessionState(await window.adit.createSession({ provider: 'grok' })))}
               px="3"
               variant="outline"
+              borderColor="actionBorder"
+              color="actionFg"
+              _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
+              _hover={{ bg: 'actionHoverBg' }}
             >
               <Icon as={Sparkles} />
               New Grok
@@ -444,15 +448,31 @@ function NoteCard({ archived, busy, note, onArchive, onOpen, onRename }: NoteCar
           </Button>
 
           <HStack align="center" flexShrink="0" gap="1.5">
-            <Button disabled={busy} fontSize="xs" h="7" onClick={onRename} px="2.5" size="xs" variant="outline">
+            <Button
+              borderColor="actionBorder"
+              color="actionFg"
+              disabled={busy}
+              fontSize="xs"
+              h="7"
+              onClick={onRename}
+              px="2.5"
+              size="xs"
+              variant="outline"
+              _disabled={{ borderColor: 'actionDisabledBorder', color: 'actionDisabledFg', opacity: 1 }}
+              _hover={{ bg: 'actionHoverBg' }}
+            >
               Rename
             </Button>
             <IconButton
               aria-label={archived ? 'Restore note' : 'Archive note'}
+              bg="subtleActionBg"
+              color="subtleActionFg"
               disabled={busy}
               onClick={onArchive}
               size="xs"
               variant="subtle"
+              _disabled={{ color: 'actionDisabledFg', opacity: 1 }}
+              _hover={{ bg: 'subtleActionHoverBg' }}
             >
               <Icon as={archived ? RotateCcw : Archive} boxSize="3.5" />
             </IconButton>
