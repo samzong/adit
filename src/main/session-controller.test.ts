@@ -1,8 +1,10 @@
 import type { BrowserWindow, WebContentsView } from 'electron'
-import { describe, expect, it, vi } from 'vitest'
-import type { NoteRow } from '../shared/types'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { CaptureSource, NoteRow } from '../shared/types'
 import type { NoteStore } from './db/notes'
 import { SessionController } from './session-controller'
+
+const bridgeReadSelection = vi.hoisted(() => vi.fn())
 
 vi.mock('./nav-watcher', () => ({
   watchNavigation: vi.fn(() => () => undefined)
@@ -21,11 +23,16 @@ vi.mock('./session-bridge', () => ({
     detach: vi.fn(),
     onFullNavigation: vi.fn(),
     onRenderProcessGone: vi.fn(),
-    onSameDocumentNavigation: vi.fn()
+    onSameDocumentNavigation: vi.fn(),
+    readSelection: bridgeReadSelection
   }))
 }))
 
 describe('SessionController', () => {
+  beforeEach(() => {
+    bridgeReadSelection.mockReset()
+  })
+
   it('flushes an active session without sending IPC after the window is destroyed', () => {
     const note: NoteRow = {
       id: 'note-1',
@@ -84,5 +91,58 @@ describe('SessionController', () => {
     expect(() => controller.flushSync()).not.toThrow()
     expect(updateTitleFromProvider).toHaveBeenCalledWith(note.id, 'Latest title')
     expect(send).not.toHaveBeenCalled()
+  })
+
+  it('builds readSelection source metadata from the active provider view', async () => {
+    const window = {
+      isDestroyed: () => false,
+      webContents: {
+        isDestroyed: () => false,
+        send: vi.fn()
+      }
+    } as unknown as BrowserWindow
+    const view = {
+      webContents: {
+        getTitle: () => 'Provider title',
+        mainFrame: { url: 'https://chatgpt.com/c/00000000-0000-0000-0000-000000000000' }
+      }
+    } as unknown as WebContentsView
+    const controller = new SessionController(window, {} as NoteStore)
+    bridgeReadSelection.mockImplementation((source: unknown) => Promise.resolve({ selection: null, source }))
+    ;(
+      controller as unknown as {
+        active: {
+          provider: { id: 'chatgpt' }
+          view: WebContentsView
+          mode: 'active_saved'
+          noteId: string
+          sessionUrl: string
+          title: null
+          unwatch: () => void
+        }
+      }
+    ).active = {
+      provider: { id: 'chatgpt' },
+      view,
+      mode: 'active_saved',
+      noteId: 'note-1',
+      sessionUrl: 'https://chatgpt.com/c/00000000-0000-0000-0000-000000000000',
+      title: null,
+      unwatch: () => undefined
+    }
+
+    const result = await controller.readSelection()
+
+    expect(bridgeReadSelection).toHaveBeenCalledTimes(1)
+    const source = bridgeReadSelection.mock.calls[0][0] as CaptureSource
+    expect(source.provider).toBe('chatgpt')
+    expect(source.url).toBe('https://chatgpt.com/c/00000000-0000-0000-0000-000000000000')
+    expect(source.title).toBe('Provider title')
+    expect(typeof source.capturedAt).toBe('number')
+    expect(result.source).toMatchObject({
+      provider: 'chatgpt',
+      url: 'https://chatgpt.com/c/00000000-0000-0000-0000-000000000000',
+      title: 'Provider title'
+    })
   })
 })

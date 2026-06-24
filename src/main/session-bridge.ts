@@ -11,11 +11,13 @@ import {
   type ProviderResultValue
 } from '../shared/provider-bridge-protocol'
 import { isProviderBridgeHello, isProviderEvent, isProviderResult } from '../shared/provider-bridge-schema'
+import type { CaptureSource, SessionSelectionResult } from '../shared/types'
 import type { ProviderConfig } from './providers'
 import { isAdapterHost } from './providers'
 
 const MAX_RUNTIME_ID_LOG = 64
 const REFRESH_CAPABILITIES_TIMEOUT_MS = 1000
+const READ_SELECTION_TIMEOUT_MS = 1000
 
 export interface BridgeAttachContext {
   provider: ProviderConfig
@@ -83,6 +85,20 @@ export class SessionBridge {
 
   onRenderProcessGone(): void {
     this.closeConnection('render_process_gone')
+  }
+
+  async readSelection(source: CaptureSource): Promise<SessionSelectionResult> {
+    const capabilities = await this.ensureCapabilities()
+    if (capabilities.readSelection !== true) {
+      throw createBridgeError('capability_unavailable')
+    }
+
+    const result = await this.sendCommand('readSelection', READ_SELECTION_TIMEOUT_MS)
+    if (result.kind !== 'selection') {
+      throw createBridgeError('unknown')
+    }
+
+    return { selection: result.selection, source }
   }
 
   private handleHello = (event: IpcMainEvent, hello: unknown): void => {
@@ -250,6 +266,15 @@ export class SessionBridge {
     }
 
     return result.capabilities
+  }
+
+  private async ensureCapabilities(): Promise<ProviderCapabilities> {
+    const connection = this.connection
+    if (!connection) {
+      throw createBridgeError('adapter_unavailable')
+    }
+
+    return connection.capabilities ?? this.refreshCapabilities()
   }
 
   private sendCommand(type: ProviderCommand['type'], timeoutMs: number): Promise<ProviderResultValue> {

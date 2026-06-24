@@ -1,3 +1,5 @@
+import type { AdapterCapturedSelection, ProviderBridgeErrorCode } from './provider-bridge-protocol'
+
 export type ProviderId = 'chatgpt' | 'grok'
 
 export interface NoteRow {
@@ -42,6 +44,23 @@ export interface SessionState {
   noteId: string | null
   sessionUrl: string | null
   title: string | null
+}
+
+export interface CaptureSource {
+  provider: ProviderId
+  url: string
+  title: string | null
+  capturedAt: number
+}
+
+export interface SessionSelectionResult {
+  selection: AdapterCapturedSelection | null
+  source: CaptureSource
+}
+
+export interface SessionSelectionError {
+  code: ProviderBridgeErrorCode
+  message?: string
 }
 
 export type ToastLevel = 'info' | 'error'

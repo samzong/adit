@@ -8,6 +8,7 @@ export const IPC = {
   sessionOpen: 'session:open',
   sessionClose: 'session:close',
   sessionState: 'session:state',
+  sessionReadSelection: 'session:read-selection',
   sessionStateChanged: 'session:state-changed',
   sessionTitleUpdated: 'session:title-updated',
   sessionLoginRequired: 'session:login-required',

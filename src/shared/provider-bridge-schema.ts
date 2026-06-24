@@ -1,5 +1,7 @@
 import {
+  MAX_SELECTION_BYTES,
   PROTOCOL_VERSION,
+  type AdapterCapturedSelection,
   type ProviderBridgeError,
   type ProviderBridgeErrorCode,
   type ProviderBridgeHello,
@@ -58,7 +60,11 @@ function hasBridgeEnvelope(value: Record<string, unknown>, requireRequestId: boo
 }
 
 export function isProviderCommand(value: unknown): value is ProviderCommand {
-  return isObject(value) && value.type === 'refreshCapabilities' && hasBridgeEnvelope(value, true)
+  return (
+    isObject(value) &&
+    (value.type === 'refreshCapabilities' || value.type === 'readSelection') &&
+    hasBridgeEnvelope(value, true)
+  )
 }
 
 function isProviderBridgeErrorCode(value: unknown): value is ProviderBridgeErrorCode {
@@ -71,6 +77,10 @@ function isProviderBridgeError(value: unknown): value is ProviderBridgeError {
   )
 }
 
+export function isAdapterCapturedSelection(value: unknown): value is AdapterCapturedSelection {
+  return isObject(value) && isString(value.text) && encodedByteLength(value.text) <= MAX_SELECTION_BYTES
+}
+
 function isProviderResultValue(value: unknown): value is ProviderResultValue {
   if (!isObject(value) || !isString(value.kind)) {
     return false
@@ -78,6 +88,10 @@ function isProviderResultValue(value: unknown): value is ProviderResultValue {
 
   if (value.kind === 'capabilities') {
     return isProviderCapabilities(value.capabilities)
+  }
+
+  if (value.kind === 'selection') {
+    return value.selection === null || isAdapterCapturedSelection(value.selection)
   }
 
   return value.kind === 'void'
@@ -105,4 +119,8 @@ export function isProviderEvent(value: unknown): value is ProviderEvent {
   }
 
   return value.type === 'adapterError' && isProviderBridgeError(value.error)
+}
+
+function encodedByteLength(value: string): number {
+  return new TextEncoder().encode(value).length
 }

@@ -5,6 +5,7 @@ import type {
   NotesListRequest,
   OpenSessionRequest,
   RenameNoteRequest,
+  SessionSelectionResult,
   SessionState,
   ToastMessage
 } from '../../shared/types'
@@ -22,6 +23,7 @@ declare global {
       openSession: (request: OpenSessionRequest) => Promise<SessionState>
       closeSession: () => Promise<SessionState>
       getSessionState: () => Promise<SessionState>
+      sessionReadSelection: () => Promise<SessionSelectionResult>
       onNotesChanged: (handler: () => void) => Unsubscribe
       onSessionStateChanged: (handler: (state: SessionState) => void) => Unsubscribe
       onSessionTitleUpdated: (handler: (note: NoteRow) => void) => Unsubscribe

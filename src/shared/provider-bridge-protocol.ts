@@ -2,6 +2,8 @@ export const PROTOCOL_VERSION = 1 as const
 
 export const providerBridgeHello = 'provider-bridge:hello'
 
+export const MAX_SELECTION_BYTES = 64 * 1024
+
 export interface ProviderBridgeHello {
   protocolVersion: typeof PROTOCOL_VERSION
   runtimeId: string
@@ -41,9 +43,21 @@ export interface RefreshCapabilitiesCommand extends BridgeEnvelope {
   requestId: string
 }
 
-export type ProviderCommand = RefreshCapabilitiesCommand
+export interface ReadSelectionCommand extends BridgeEnvelope {
+  type: 'readSelection'
+  requestId: string
+}
 
-export type ProviderResultValue = { kind: 'capabilities'; capabilities: ProviderCapabilities } | { kind: 'void' }
+export type ProviderCommand = RefreshCapabilitiesCommand | ReadSelectionCommand
+
+export interface AdapterCapturedSelection {
+  text: string
+}
+
+export type ProviderResultValue =
+  | { kind: 'capabilities'; capabilities: ProviderCapabilities }
+  | { kind: 'selection'; selection: AdapterCapturedSelection | null }
+  | { kind: 'void' }
 
 export type ProviderResult =
   | {

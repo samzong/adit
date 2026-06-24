@@ -56,7 +56,12 @@ vi.mock('electron-log/main', () => ({
 }))
 
 import { SessionBridge } from './session-bridge'
-import { providerBridgeHello, PROTOCOL_VERSION, type ProviderCommand } from '../shared/provider-bridge-protocol'
+import {
+  providerBridgeHello,
+  PROTOCOL_VERSION,
+  type ProviderCapabilities,
+  type ProviderCommand
+} from '../shared/provider-bridge-protocol'
 import { providers } from './providers'
 
 interface FakeFrame {
@@ -117,8 +122,33 @@ function firstCommand(): ProviderCommand {
   return portPostMessage.mock.calls[0][0] as ProviderCommand
 }
 
+function latestCommand(): ProviderCommand {
+  return portPostMessage.mock.calls[portPostMessage.mock.calls.length - 1][0] as ProviderCommand
+}
+
 function pendingCount(bridge: SessionBridge): number {
   return (bridge as unknown as { pending: Map<string, unknown> }).pending.size
+}
+
+function resolveCapabilities(capabilities: ProviderCapabilities = { readSelection: true }): void {
+  const command = latestCommand()
+  portMessageHandler?.({
+    data: {
+      type: 'result',
+      requestId: command.requestId,
+      connectionId: command.connectionId,
+      routeRevision: command.routeRevision,
+      ok: true,
+      value: { kind: 'capabilities', capabilities }
+    }
+  })
+}
+
+const captureSource = {
+  provider: 'chatgpt' as const,
+  url: 'https://chatgpt.com/c/abc',
+  title: 'A provider title',
+  capturedAt: 123
 }
 
 describe('SessionBridge', () => {
@@ -237,17 +267,7 @@ describe('SessionBridge', () => {
 
   it('updates capabilities from a current refresh result', () => {
     const bridge = connectChatGptBridge()
-    const command = firstCommand()
-    portMessageHandler?.({
-      data: {
-        type: 'result',
-        requestId: command.requestId,
-        connectionId: command.connectionId,
-        routeRevision: command.routeRevision,
-        ok: true,
-        value: { kind: 'capabilities', capabilities: { readSelection: true } }
-      }
-    })
+    resolveCapabilities()
 
     const connection = (bridge as unknown as { connection: { capabilities: unknown } | null }).connection
     expect(connection?.capabilities).toEqual({ readSelection: true })
@@ -310,6 +330,74 @@ describe('SessionBridge', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('reads selection and returns main-owned source metadata', async () => {
+    const bridge = connectChatGptBridge()
+    resolveCapabilities()
+    portPostMessage.mockClear()
+
+    const resultPromise = bridge.readSelection(captureSource)
+    await Promise.resolve()
+
+    const command = latestCommand()
+    expect(command).toMatchObject({
+      type: 'readSelection',
+      connectionId: 'uuid-1',
+      routeRevision: 0
+    })
+    portMessageHandler?.({
+      data: {
+        type: 'result',
+        requestId: command.requestId,
+        connectionId: command.connectionId,
+        routeRevision: command.routeRevision,
+        ok: true,
+        value: {
+          kind: 'selection',
+          selection: { text: 'selected text' },
+          source: { provider: 'evil', url: 'https://evil.com' }
+        }
+      }
+    })
+
+    await expect(resultPromise).resolves.toEqual({
+      selection: { text: 'selected text' },
+      source: captureSource
+    })
+  })
+
+  it('returns null for an empty provider selection', async () => {
+    const bridge = connectChatGptBridge()
+    resolveCapabilities()
+    portPostMessage.mockClear()
+
+    const resultPromise = bridge.readSelection(captureSource)
+    await Promise.resolve()
+
+    const command = latestCommand()
+    portMessageHandler?.({
+      data: {
+        type: 'result',
+        requestId: command.requestId,
+        connectionId: command.connectionId,
+        routeRevision: command.routeRevision,
+        ok: true,
+        value: { kind: 'selection', selection: null }
+      }
+    })
+
+    await expect(resultPromise).resolves.toEqual({
+      selection: null,
+      source: captureSource
+    })
+  })
+
+  it('rejects readSelection when the capability is unavailable', async () => {
+    const bridge = connectChatGptBridge()
+    resolveCapabilities({})
+
+    await expect(bridge.readSelection(captureSource)).rejects.toMatchObject({ code: 'capability_unavailable' })
   })
 
   it('detach closes an existing connection and clears context', () => {

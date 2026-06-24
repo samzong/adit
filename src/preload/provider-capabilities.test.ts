@@ -5,7 +5,7 @@ import type { ProviderAdapter } from './provider-adapters'
 
 function adapterFor(sequence: ProviderCapabilities[]): ProviderAdapter {
   const detect = vi.fn(() => sequence.shift() ?? {})
-  return { detect }
+  return { detect, readSelection: vi.fn(() => ({ kind: 'empty' as const })) }
 }
 
 describe('detectProviderCapabilities', () => {

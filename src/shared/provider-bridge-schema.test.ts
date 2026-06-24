@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isAdapterCapturedSelection,
   isProviderBridgeHello,
   isProviderCapabilities,
   isProviderCommand,
@@ -7,6 +8,7 @@ import {
   isProviderResult
 } from './provider-bridge-schema'
 import { PROTOCOL_VERSION } from './provider-bridge-protocol'
+import { MAX_SELECTION_BYTES } from './provider-bridge-protocol'
 
 describe('isProviderBridgeHello', () => {
   it('accepts a well-formed hello', () => {
@@ -51,6 +53,7 @@ describe('provider bridge command/result/event schemas', () => {
 
   it('accepts refreshCapabilities commands', () => {
     expect(isProviderCommand({ type: 'refreshCapabilities', requestId: 'req-1', ...envelope })).toBe(true)
+    expect(isProviderCommand({ type: 'readSelection', requestId: 'req-2', ...envelope })).toBe(true)
   })
 
   it('rejects commands without valid envelope fields', () => {
@@ -81,6 +84,41 @@ describe('provider bridge command/result/event schemas', () => {
         error: { code: 'timeout' }
       })
     ).toBe(true)
+  })
+
+  it('accepts selection results', () => {
+    expect(
+      isProviderResult({
+        type: 'result',
+        requestId: 'req-1',
+        ...envelope,
+        ok: true,
+        value: { kind: 'selection', selection: { text: 'hello' } }
+      })
+    ).toBe(true)
+    expect(
+      isProviderResult({
+        type: 'result',
+        requestId: 'req-1',
+        ...envelope,
+        ok: true,
+        value: { kind: 'selection', selection: null }
+      })
+    ).toBe(true)
+  })
+
+  it('rejects oversized selection payloads', () => {
+    expect(isAdapterCapturedSelection({ text: 'a'.repeat(MAX_SELECTION_BYTES) })).toBe(true)
+    expect(isAdapterCapturedSelection({ text: 'a'.repeat(MAX_SELECTION_BYTES + 1) })).toBe(false)
+    expect(
+      isProviderResult({
+        type: 'result',
+        requestId: 'req-1',
+        ...envelope,
+        ok: true,
+        value: { kind: 'selection', selection: { text: 'a'.repeat(MAX_SELECTION_BYTES + 1) } }
+      })
+    ).toBe(false)
   })
 
   it('rejects array capability payloads', () => {

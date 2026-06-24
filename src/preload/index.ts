@@ -7,6 +7,7 @@ import type {
   NotesListRequest,
   OpenSessionRequest,
   RenameNoteRequest,
+  SessionSelectionResult,
   SessionState,
   ToastMessage
 } from '../shared/types'
@@ -29,6 +30,7 @@ const api = {
   openSession: (request: OpenSessionRequest): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionOpen, request),
   closeSession: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionClose),
   getSessionState: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionState),
+  sessionReadSelection: (): Promise<SessionSelectionResult> => ipcRenderer.invoke(IPC.sessionReadSelection),
   onNotesChanged: (handler: () => void): Unsubscribe => onChannel<void>(IPC.notesChanged, handler),
   onSessionStateChanged: (handler: (state: SessionState) => void): Unsubscribe =>
     onChannel<SessionState>(IPC.sessionStateChanged, handler),

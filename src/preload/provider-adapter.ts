@@ -45,6 +45,11 @@ function handlePortMessage(
 
   if (value.type === 'refreshCapabilities') {
     void handleRefreshCapabilities(port, value, adapter)
+    return
+  }
+
+  if (value.type === 'readSelection') {
+    handleReadSelection(port, value, adapter)
   }
 }
 
@@ -74,7 +79,31 @@ async function handleRefreshCapabilities(
   }
 }
 
-function postError(port: MessagePort, command: ProviderCommand, code: 'adapter_unavailable'): void {
+function handleReadSelection(
+  port: MessagePort,
+  command: ProviderCommand,
+  adapter: ReturnType<typeof providerAdapterForHost>
+): void {
+  if (!adapter) {
+    postError(port, command, 'adapter_unavailable')
+    return
+  }
+
+  const result = adapter.readSelection()
+  if (result.kind === 'empty') {
+    postSelectionResult(port, command, null)
+    return
+  }
+
+  if (result.kind === 'selection') {
+    postSelectionResult(port, command, result.selection)
+    return
+  }
+
+  postError(port, command, result.kind === 'out_of_scope' ? 'selection_out_of_scope' : 'payload_too_large')
+}
+
+function postError(port: MessagePort, command: ProviderCommand, code: ProviderBridgeErrorCode): void {
   port.postMessage({
     type: 'result',
     requestId: command.requestId,
@@ -82,6 +111,17 @@ function postError(port: MessagePort, command: ProviderCommand, code: 'adapter_u
     routeRevision: command.routeRevision,
     ok: false,
     error: { code }
+  })
+}
+
+function postSelectionResult(port: MessagePort, command: ProviderCommand, selection: { text: string } | null): void {
+  port.postMessage({
+    type: 'result',
+    requestId: command.requestId,
+    connectionId: command.connectionId,
+    routeRevision: command.routeRevision,
+    ok: true,
+    value: { kind: 'selection', selection }
   })
 }
 
