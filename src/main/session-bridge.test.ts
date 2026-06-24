@@ -49,6 +49,7 @@ vi.mock('electron-log/main', () => ({
   default: {
     info: vi.fn(),
     debug: vi.fn(),
+    silly: vi.fn(),
     warn: vi.fn(),
     error: vi.fn()
   }

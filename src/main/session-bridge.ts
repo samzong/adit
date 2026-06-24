@@ -77,7 +77,7 @@ export class SessionBridge {
     connection.routeRevision += 1
     connection.capabilities = null
     void this.refreshCapabilities().catch((error: unknown) => {
-      log.debug('provider bridge: refresh capabilities failed', { reason: formatBridgeFailure(error) })
+      logRefreshCapabilitiesFailure(error)
     })
   }
 
@@ -172,7 +172,7 @@ export class SessionBridge {
       runtimeId: clipRuntimeId(hello.runtimeId)
     })
     void this.refreshCapabilities().catch((error: unknown) => {
-      log.debug('provider bridge: refresh capabilities failed', { reason: formatBridgeFailure(error) })
+      logRefreshCapabilitiesFailure(error)
     })
   }
 
@@ -203,7 +203,7 @@ export class SessionBridge {
     if (isProviderEvent(message)) {
       const connection = this.connection
       if (!connection || !isCurrentRoute(connection, message.connectionId, message.routeRevision)) {
-        log.debug('provider bridge: event dropped, stale route')
+        log.silly('provider bridge: event dropped, stale route')
         return
       }
 
@@ -218,13 +218,13 @@ export class SessionBridge {
   private handleResult(result: ProviderResult): void {
     const connection = this.connection
     if (!connection || !isCurrentRoute(connection, result.connectionId, result.routeRevision)) {
-      log.debug('provider bridge: result dropped, stale route')
+      log.silly('provider bridge: result dropped, stale route')
       return
     }
 
     const pending = this.pending.get(result.requestId)
     if (!pending || pending.routeRevision !== result.routeRevision) {
-      log.debug('provider bridge: result dropped, missing pending request')
+      log.silly('provider bridge: result dropped, missing pending request')
       return
     }
 
@@ -326,4 +326,19 @@ function formatBridgeFailure(error: unknown): string {
   }
 
   return String(error)
+}
+
+function logRefreshCapabilitiesFailure(error: unknown): void {
+  const reason = formatBridgeFailure(error)
+
+  if (isExpectedStaleBridgeFailure(error)) {
+    log.silly('provider bridge: refresh capabilities failed', { reason })
+    return
+  }
+
+  log.debug('provider bridge: refresh capabilities failed', { reason })
+}
+
+function isExpectedStaleBridgeFailure(error: unknown): boolean {
+  return error instanceof ProviderBridgeFailure && (error.code === 'route_stale' || error.code === 'connection_stale')
 }

@@ -8,6 +8,7 @@ import {
   type ProviderCommand
 } from '../shared/provider-bridge-protocol'
 import { isProviderCommand } from '../shared/provider-bridge-schema'
+import { detectProviderCapabilities, hasProviderCapabilities } from './provider-capabilities'
 import { providerAdapterForHost } from './provider-adapters'
 
 if (window.top === window) {
@@ -43,21 +44,21 @@ function handlePortMessage(
   }
 
   if (value.type === 'refreshCapabilities') {
-    handleRefreshCapabilities(port, value, adapter)
+    void handleRefreshCapabilities(port, value, adapter)
   }
 }
 
-function handleRefreshCapabilities(
+async function handleRefreshCapabilities(
   port: MessagePort,
   command: ProviderCommand,
   adapter: ReturnType<typeof providerAdapterForHost>
-): void {
+): Promise<void> {
   if (!adapter) {
     postError(port, command, 'adapter_unavailable')
     return
   }
 
-  const capabilities = adapter.detect()
+  const capabilities = await detectProviderCapabilities(adapter)
   port.postMessage({
     type: 'result',
     requestId: command.requestId,
@@ -68,7 +69,7 @@ function handleRefreshCapabilities(
   })
   postCapabilitiesChanged(port, command, capabilities)
 
-  if (!hasCapabilities(capabilities)) {
+  if (!hasProviderCapabilities(capabilities)) {
     postAdapterError(port, command, 'target_not_found')
   }
 }
@@ -104,8 +105,4 @@ function postAdapterError(port: MessagePort, command: ProviderCommand, code: Pro
     routeRevision: command.routeRevision,
     error: { code }
   })
-}
-
-function hasCapabilities(capabilities: ProviderCapabilities): boolean {
-  return capabilities.readSelection === true
 }
