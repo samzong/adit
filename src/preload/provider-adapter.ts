@@ -10,6 +10,11 @@ import {
 import { isProviderCommand } from '../shared/provider-bridge-schema'
 import { detectProviderCapabilities, hasProviderCapabilities } from './provider-capabilities'
 import { providerAdapterForHost } from './provider-adapters'
+import {
+  createProviderSelectionAction,
+  providerSelectionActionCss,
+  type ProviderSelectionAction
+} from './provider-selection-action'
 
 if (window.top === window) {
   const adapter = providerPageAdapterForHost(window.location.hostname)
@@ -17,8 +22,12 @@ if (window.top === window) {
 
   if (adapter) {
     webFrame.insertCSS(adapter.css)
+    if (bridgeAdapter) {
+      webFrame.insertCSS(providerSelectionActionCss)
+    }
 
     const runtimeId = crypto.randomUUID()
+    let selectionAction: ProviderSelectionAction | null = null
     ipcRenderer.send(providerBridgeHello, { protocolVersion: PROTOCOL_VERSION, runtimeId })
 
     ipcRenderer.on(providerBridgeHello, (event) => {
@@ -26,8 +35,10 @@ if (window.top === window) {
       if (!port) {
         return
       }
+      selectionAction?.dispose()
+      selectionAction = bridgeAdapter ? createProviderSelectionAction(port, bridgeAdapter) : null
       port.onmessage = (message) => {
-        handlePortMessage(port, message.data, bridgeAdapter)
+        handlePortMessage(port, message.data, bridgeAdapter, selectionAction)
       }
       port.start()
     })
@@ -37,9 +48,17 @@ if (window.top === window) {
 function handlePortMessage(
   port: MessagePort,
   value: unknown,
-  adapter: ReturnType<typeof providerAdapterForHost>
+  adapter: ReturnType<typeof providerAdapterForHost>,
+  selectionAction: ProviderSelectionAction | null
 ): void {
   if (!isProviderCommand(value)) {
+    return
+  }
+
+  selectionAction?.setRoute(value)
+
+  if (value.type === 'setSelectionActionAvailability') {
+    handleSetSelectionActionAvailability(port, value, selectionAction)
     return
   }
 
@@ -103,6 +122,19 @@ function handleReadSelection(
   postError(port, command, result.kind === 'out_of_scope' ? 'selection_out_of_scope' : 'payload_too_large')
 }
 
+function handleSetSelectionActionAvailability(
+  port: MessagePort,
+  command: ProviderCommand,
+  selectionAction: ProviderSelectionAction | null
+): void {
+  if (command.type !== 'setSelectionActionAvailability') {
+    return
+  }
+
+  selectionAction?.setEnabled(command.enabled)
+  postVoidResult(port, command)
+}
+
 function postError(port: MessagePort, command: ProviderCommand, code: ProviderBridgeErrorCode): void {
   port.postMessage({
     type: 'result',
@@ -111,6 +143,17 @@ function postError(port: MessagePort, command: ProviderCommand, code: ProviderBr
     routeRevision: command.routeRevision,
     ok: false,
     error: { code }
+  })
+}
+
+function postVoidResult(port: MessagePort, command: ProviderCommand): void {
+  port.postMessage({
+    type: 'result',
+    requestId: command.requestId,
+    connectionId: command.connectionId,
+    routeRevision: command.routeRevision,
+    ok: true,
+    value: { kind: 'void' }
   })
 }
 

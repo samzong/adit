@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { app, Menu, nativeImage, Tray, type BrowserWindow } from 'electron'
 import log from 'electron-log/main'
 import { openDatabase, type DatabaseConnection } from './db/connection'
+import { LibraryStore } from './db/library'
 import { SparkStore } from './db/sparks'
 import { registerIpc } from './ipc'
 import { providers } from './providers'
@@ -35,11 +36,12 @@ if (!acquiredSingleInstanceLock) {
 
   void app.whenReady().then(() => {
     database = openDatabase()
-    const store = new SparkStore(database)
+    const sparkStore = new SparkStore(database)
+    const libraryStore = new LibraryStore(database)
     mainWindow = createMainWindow()
-    sessions = new SessionController(mainWindow, store)
+    sessions = new SessionController(mainWindow, sparkStore)
 
-    registerIpc(store, sessions)
+    registerIpc(sparkStore, libraryStore, sessions)
     configureMenu()
     configureMenubar()
 
