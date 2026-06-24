@@ -18,7 +18,7 @@
     "release:check": "node scripts/check-release-tag.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check",
     "bundle:check": "node scripts/check-renderer-bundle.mjs",
-    "test": "pnpm rebuild:node && vitest run",
+    "test": "pnpm rebuild:node && vitest run; status=$?; pnpm rebuild:electron; exit $status",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
