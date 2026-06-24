@@ -1,10 +1,10 @@
 import type {
-  ArchiveNoteRequest,
+  ArchiveSparkRequest,
   CreateSessionRequest,
-  NoteRow,
-  NotesListRequest,
+  SparkRow,
+  SparkListRequest,
   OpenSessionRequest,
-  RenameNoteRequest,
+  RenameSparkRequest,
   SessionSelectionResult,
   SessionState,
   ToastMessage
@@ -15,18 +15,18 @@ type Unsubscribe = () => void
 declare global {
   interface Window {
     adit: {
-      listNotes: (request?: NotesListRequest) => Promise<NoteRow[]>
-      renameNote: (request: RenameNoteRequest) => Promise<NoteRow>
-      archiveNote: (request: ArchiveNoteRequest) => Promise<NoteRow>
-      unarchiveNote: (request: ArchiveNoteRequest) => Promise<NoteRow>
+      listSparks: (request?: SparkListRequest) => Promise<SparkRow[]>
+      renameSpark: (request: RenameSparkRequest) => Promise<SparkRow>
+      archiveSpark: (request: ArchiveSparkRequest) => Promise<SparkRow>
+      unarchiveSpark: (request: ArchiveSparkRequest) => Promise<SparkRow>
       createSession: (request: CreateSessionRequest) => Promise<SessionState>
       openSession: (request: OpenSessionRequest) => Promise<SessionState>
       closeSession: () => Promise<SessionState>
       getSessionState: () => Promise<SessionState>
       sessionReadSelection: () => Promise<SessionSelectionResult>
-      onNotesChanged: (handler: () => void) => Unsubscribe
+      onSparksChanged: (handler: () => void) => Unsubscribe
       onSessionStateChanged: (handler: (state: SessionState) => void) => Unsubscribe
-      onSessionTitleUpdated: (handler: (note: NoteRow) => void) => Unsubscribe
+      onSessionTitleUpdated: (handler: (spark: SparkRow) => void) => Unsubscribe
       onLoginRequired: (handler: (provider: string) => void) => Unsubscribe
       onToast: (handler: (message: ToastMessage) => void) => Unsubscribe
     }

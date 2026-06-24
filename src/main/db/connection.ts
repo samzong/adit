@@ -7,7 +7,7 @@ import schemaSql from './schema.sql?raw'
 export type DatabaseConnection = Database.Database
 
 export function defaultDatabasePath(): string {
-  return join(app.getPath('userData'), 'notes.db')
+  return join(app.getPath('userData'), 'sparks.db')
 }
 
 export function openDatabase(databasePath = defaultDatabasePath()): DatabaseConnection {

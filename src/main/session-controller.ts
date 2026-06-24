@@ -1,8 +1,8 @@
 import type { BrowserWindow, WebContentsView } from 'electron'
 import log from 'electron-log/main'
 import { IPC } from '../shared/ipc'
-import type { CaptureSource, NoteRow, ProviderId, SessionSelectionResult, SessionState } from '../shared/types'
-import type { NoteStore } from './db/notes'
+import type { CaptureSource, SparkRow, ProviderId, SessionSelectionResult, SessionState } from '../shared/types'
+import type { SparkStore } from './db/sparks'
 import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { watchNavigation } from './nav-watcher'
 import { attachProviderView, createProviderView, removeProviderView, resizeProviderView } from './session-view'
@@ -12,7 +12,7 @@ interface ActiveSession {
   provider: ProviderConfig
   view: WebContentsView
   mode: 'creating' | 'active_ephemeral' | 'active_saved' | 'closing'
-  noteId: string | null
+  sparkId: string | null
   sessionUrl: string | null
   title: string | null
   unwatch: () => void
@@ -24,7 +24,7 @@ export class SessionController {
 
   constructor(
     private readonly window: BrowserWindow,
-    private readonly store: NoteStore
+    private readonly store: SparkStore
   ) {}
 
   create(providerId: ProviderId): SessionState {
@@ -36,7 +36,7 @@ export class SessionController {
       provider,
       view,
       mode: 'creating',
-      noteId: null,
+      sparkId: null,
       sessionUrl: null,
       title: null,
       unwatch: () => undefined
@@ -55,18 +55,18 @@ export class SessionController {
     return this.getState()
   }
 
-  open(noteId: string): SessionState {
-    const note = this.store.getNote(noteId)
+  open(sparkId: string): SessionState {
+    const spark = this.store.getSpark(sparkId)
 
-    const sessionUrl = note?.session_url
+    const sessionUrl = spark?.session_url
 
     if (!sessionUrl) {
-      throw new Error('Note has no session URL')
+      throw new Error('Spark has no session URL')
     }
 
     this.close()
 
-    const provider = getProvider(note.provider)
+    const provider = getProvider(spark.provider)
 
     if (!isAllowedProviderUrl(provider, sessionUrl)) {
       throw new Error('Session URL is outside provider allowlist')
@@ -77,9 +77,9 @@ export class SessionController {
       provider,
       view,
       mode: 'active_saved',
-      noteId: note.id,
+      sparkId: spark.id,
       sessionUrl,
-      title: note.title,
+      title: spark.title,
       unwatch: () => undefined
     }
     this.active = active
@@ -91,7 +91,7 @@ export class SessionController {
     })
     attachProviderView(this.window, view)
     this.publishState()
-    void this.loadSavedSession(active, note)
+    void this.loadSavedSession(active, spark)
 
     return this.getState()
   }
@@ -131,7 +131,7 @@ export class SessionController {
       return {
         mode: 'list',
         provider: null,
-        noteId: null,
+        sparkId: null,
         sessionUrl: null,
         title: null
       }
@@ -140,7 +140,7 @@ export class SessionController {
     return {
       mode: this.active.mode,
       provider: this.active.provider.id,
-      noteId: this.active.noteId,
+      sparkId: this.active.sparkId,
       sessionUrl: this.active.sessionUrl,
       title: this.active.title
     }
@@ -191,15 +191,15 @@ export class SessionController {
     }
   }
 
-  private async loadSavedSession(active: ActiveSession, note: NoteRow): Promise<void> {
-    if (!note.session_url) {
+  private async loadSavedSession(active: ActiveSession, spark: SparkRow): Promise<void> {
+    if (!spark.session_url) {
       return
     }
 
     try {
-      await active.view.webContents.loadURL(note.session_url)
+      await active.view.webContents.loadURL(spark.session_url)
     } catch (reason) {
-      log.error('Failed to resume session', { noteId: note.id, reason: formatError(reason) })
+      log.error('Failed to resume session', { sparkId: spark.id, reason: formatError(reason) })
 
       if (this.active !== active) {
         return
@@ -214,9 +214,9 @@ export class SessionController {
     }
 
     if (this.active === active) {
-      const touched = this.store.touchOpened(note.id)
+      const touched = this.store.touchOpened(spark.id)
       active.title = touched.title
-      this.publishNotesChanged()
+      this.publishSparksChanged()
       this.publishState()
     }
   }
@@ -226,13 +226,13 @@ export class SessionController {
       const previousTitle = active.title
       active.title = title
 
-      if (active.noteId) {
-        const note = this.store.updateTitleFromProvider(active.noteId, title)
-        if (note) {
-          active.title = note.title
-          if (note.title !== previousTitle) {
-            this.publishTitle(note)
-            this.publishNotesChanged()
+      if (active.sparkId) {
+        const spark = this.store.updateTitleFromProvider(active.sparkId, title)
+        if (spark) {
+          active.title = spark.title
+          if (spark.title !== previousTitle) {
+            this.publishTitle(spark)
+            this.publishSparksChanged()
           }
         }
       }
@@ -268,48 +268,48 @@ export class SessionController {
   }
 
   private captureSessionUrl(active: ActiveSession, sessionUrl: string): void {
-    if (active.sessionUrl === sessionUrl && active.noteId) {
+    if (active.sessionUrl === sessionUrl && active.sparkId) {
       return
     }
 
-    const note = this.store.upsertCapturedSession({
+    const spark = this.store.upsertCapturedSession({
       provider: active.provider.id,
       sessionUrl,
       title: active.title ?? active.view.webContents.getTitle()
     })
     active.mode = 'active_saved'
-    active.noteId = note.id
-    active.sessionUrl = note.session_url
-    active.title = note.title
-    this.publishTitle(note)
-    this.publishNotesChanged()
+    active.sparkId = spark.id
+    active.sessionUrl = spark.session_url
+    active.title = spark.title
+    this.publishTitle(spark)
+    this.publishSparksChanged()
     this.publishState()
   }
 
   private flushActive(active: ActiveSession): void {
-    if (!active.noteId) {
+    if (!active.sparkId) {
       return
     }
 
     const previousTitle = active.title
     const title = active.title ?? active.view.webContents.getTitle()
-    const note = this.store.updateTitleFromProvider(active.noteId, title)
+    const spark = this.store.updateTitleFromProvider(active.sparkId, title)
 
-    if (note) {
-      active.title = note.title
-      if (note.title !== previousTitle) {
-        this.publishTitle(note)
-        this.publishNotesChanged()
+    if (spark) {
+      active.title = spark.title
+      if (spark.title !== previousTitle) {
+        this.publishTitle(spark)
+        this.publishSparksChanged()
       }
     }
   }
 
-  private publishTitle(note: NoteRow): void {
-    this.sendToRenderer(IPC.sessionTitleUpdated, note)
+  private publishTitle(spark: SparkRow): void {
+    this.sendToRenderer(IPC.sessionTitleUpdated, spark)
   }
 
-  private publishNotesChanged(): void {
-    this.sendToRenderer(IPC.notesChanged)
+  private publishSparksChanged(): void {
+    this.sendToRenderer(IPC.sparksChanged)
   }
 
   private publishState(): void {
