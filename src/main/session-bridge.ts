@@ -274,7 +274,11 @@ export class SessionBridge {
       throw createBridgeError('adapter_unavailable')
     }
 
-    return connection.capabilities ?? this.refreshCapabilities()
+    if (connection.capabilities?.readSelection === true) {
+      return connection.capabilities
+    }
+
+    return this.refreshCapabilities()
   }
 
   private sendCommand(type: ProviderCommand['type'], timeoutMs: number): Promise<ProviderResultValue> {
