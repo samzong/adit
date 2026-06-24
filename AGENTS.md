@@ -33,6 +33,7 @@ Before UI work, read `docs/DESIGN.md`; if code and docs disagree, verify the liv
 - Prefer Chakra props, `textStyle`, semantic tokens, and component variants over inline CSS values.
 - Do not solve layout problems with one-off raw pixel offsets. If Chakra or the platform does not expose a clean layout primitive, remove the conflicting UI element instead of hand-positioning it.
 - The only accepted class hooks in shell UI are platform integration hooks such as Electron drag/no-drag regions; their styles live in `src/renderer/src/platform.css`.
+- Third-party document editor styling is the only non-platform class-hook exception. Keep it scoped to `MarkdownDocumentEditor` / `markdown-editor.tsx` with `adit-mdx-*` classes and `theme.ts` `globalCss`; do not use those hooks for shell layout.
 
 ## macOS Visual Direction
 

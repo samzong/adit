@@ -60,11 +60,15 @@ function hasBridgeEnvelope(value: Record<string, unknown>, requireRequestId: boo
 }
 
 export function isProviderCommand(value: unknown): value is ProviderCommand {
-  return (
-    isObject(value) &&
-    (value.type === 'refreshCapabilities' || value.type === 'readSelection') &&
-    hasBridgeEnvelope(value, true)
-  )
+  if (!isObject(value) || !hasBridgeEnvelope(value, true)) {
+    return false
+  }
+
+  if (value.type === 'refreshCapabilities' || value.type === 'readSelection') {
+    return true
+  }
+
+  return value.type === 'setSelectionActionAvailability' && typeof value.enabled === 'boolean'
 }
 
 function isProviderBridgeErrorCode(value: unknown): value is ProviderBridgeErrorCode {
@@ -116,6 +120,10 @@ export function isProviderEvent(value: unknown): value is ProviderEvent {
 
   if (value.type === 'capabilitiesChanged') {
     return isProviderCapabilities(value.capabilities)
+  }
+
+  if (value.type === 'insertSelectionRequested') {
+    return isAdapterCapturedSelection(value.selection)
   }
 
   return value.type === 'adapterError' && isProviderBridgeError(value.error)

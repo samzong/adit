@@ -2,6 +2,7 @@ import { ipcMain, MessageChannelMain, type IpcMainEvent, type MessagePortMain } 
 import { randomUUID } from 'node:crypto'
 import log from 'electron-log/main'
 import {
+  type AdapterCapturedSelection,
   providerBridgeHello,
   type ProviderBridgeErrorCode,
   type ProviderBridgeHello,
@@ -42,12 +43,17 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>
 }
 
+export interface SessionBridgeOptions {
+  onInsertSelectionRequested?: (selection: AdapterCapturedSelection) => void
+}
+
 export class SessionBridge {
   private activeContext: BridgeAttachContext | null = null
   private connection: BridgeConnectionState | null = null
   private readonly pending = new Map<string, PendingRequest>()
+  private selectionActionEnabled = false
 
-  constructor() {
+  constructor(private readonly options: SessionBridgeOptions = {}) {
     ipcMain.on(providerBridgeHello, this.handleHello)
   }
 
@@ -187,6 +193,9 @@ export class SessionBridge {
       origin,
       runtimeId: clipRuntimeId(hello.runtimeId)
     })
+    if (this.selectionActionEnabled) {
+      this.sendSelectionActionAvailability()
+    }
     void this.refreshCapabilities().catch((error: unknown) => {
       logRefreshCapabilitiesFailure(error)
     })
@@ -225,6 +234,8 @@ export class SessionBridge {
 
       if (message.type === 'capabilitiesChanged') {
         connection.capabilities = message.capabilities
+      } else if (message.type === 'insertSelectionRequested') {
+        this.options.onInsertSelectionRequested?.(message.selection)
       } else {
         log.debug('provider bridge: adapter error', { code: message.error.code })
       }
@@ -281,19 +292,39 @@ export class SessionBridge {
     return this.refreshCapabilities()
   }
 
-  private sendCommand(type: ProviderCommand['type'], timeoutMs: number): Promise<ProviderResultValue> {
+  setSelectionActionEnabled(enabled: boolean): void {
+    if (this.selectionActionEnabled === enabled) {
+      return
+    }
+
+    this.selectionActionEnabled = enabled
+    this.sendSelectionActionAvailability()
+  }
+
+  private sendSelectionActionAvailability(): void {
+    if (!this.connection) {
+      return
+    }
+
+    void this.sendCommand('setSelectionActionAvailability', REFRESH_CAPABILITIES_TIMEOUT_MS, {
+      enabled: this.selectionActionEnabled
+    }).catch((error: unknown) => {
+      log.debug('provider bridge: set selection action availability failed', { reason: formatBridgeFailure(error) })
+    })
+  }
+
+  private sendCommand(
+    type: ProviderCommand['type'],
+    timeoutMs: number,
+    payload: { enabled?: boolean } = {}
+  ): Promise<ProviderResultValue> {
     const connection = this.connection
     if (!connection) {
       return Promise.reject(createBridgeError('adapter_unavailable'))
     }
 
     const requestId = randomUUID()
-    const command: ProviderCommand = {
-      type,
-      requestId,
-      connectionId: connection.connectionId,
-      routeRevision: connection.routeRevision
-    }
+    const command = createCommand(type, requestId, connection, payload)
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -329,6 +360,30 @@ export class SessionBridge {
 
 function clipRuntimeId(value: string): string {
   return value.length > MAX_RUNTIME_ID_LOG ? value.slice(0, MAX_RUNTIME_ID_LOG) : value
+}
+
+function createCommand(
+  type: ProviderCommand['type'],
+  requestId: string,
+  connection: BridgeConnectionState,
+  payload: { enabled?: boolean }
+): ProviderCommand {
+  if (type === 'setSelectionActionAvailability') {
+    return {
+      type,
+      requestId,
+      connectionId: connection.connectionId,
+      routeRevision: connection.routeRevision,
+      enabled: payload.enabled === true
+    }
+  }
+
+  return {
+    type,
+    requestId,
+    connectionId: connection.connectionId,
+    routeRevision: connection.routeRevision
+  }
 }
 
 class ProviderBridgeFailure extends Error {

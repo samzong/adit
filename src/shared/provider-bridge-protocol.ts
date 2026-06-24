@@ -48,7 +48,13 @@ export interface ReadSelectionCommand extends BridgeEnvelope {
   requestId: string
 }
 
-export type ProviderCommand = RefreshCapabilitiesCommand | ReadSelectionCommand
+export interface SetSelectionActionAvailabilityCommand extends BridgeEnvelope {
+  type: 'setSelectionActionAvailability'
+  requestId: string
+  enabled: boolean
+}
+
+export type ProviderCommand = RefreshCapabilitiesCommand | ReadSelectionCommand | SetSelectionActionAvailabilityCommand
 
 export interface AdapterCapturedSelection {
   text: string
@@ -83,6 +89,12 @@ export type ProviderEvent =
       connectionId: string
       routeRevision: number
       capabilities: ProviderCapabilities
+    }
+  | {
+      type: 'insertSelectionRequested'
+      connectionId: string
+      routeRevision: number
+      selection: AdapterCapturedSelection
     }
   | {
       type: 'adapterError'

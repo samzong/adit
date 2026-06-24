@@ -28,8 +28,13 @@ interface ActiveSession {
 
 export class SessionController {
   private active: ActiveSession | null = null
+  private selectionActionRequested = false
   private workspaceLayout: WorkspaceLayoutRequest = defaultWorkspaceLayout
-  private readonly bridge = new SessionBridge()
+  private readonly bridge = new SessionBridge({
+    onInsertSelectionRequested: (selection) => {
+      this.sendToRenderer(IPC.sessionInsertSelectionRequested, selection)
+    }
+  })
 
   constructor(
     private readonly window: BrowserWindow,
@@ -139,7 +144,13 @@ export class SessionController {
 
   setWorkspaceLayout(request: WorkspaceLayoutRequest): void {
     this.workspaceLayout = sanitizeWorkspaceLayout(request)
+    this.syncSelectionActionAvailability()
     this.resize()
+  }
+
+  setSelectionActionEnabled(enabled: boolean): void {
+    this.selectionActionRequested = enabled
+    this.syncSelectionActionAvailability()
   }
 
   getState(): SessionState {
@@ -339,6 +350,14 @@ export class SessionController {
     }
 
     this.window.webContents.send(channel, ...args)
+  }
+
+  private syncSelectionActionAvailability(): void {
+    this.bridge.setSelectionActionEnabled(
+      this.selectionActionRequested &&
+        this.workspaceLayout.secondarySurface === 'note' &&
+        !this.workspaceLayout.secondaryCollapsed
+    )
   }
 }
 
