@@ -27,9 +27,11 @@ import {
 import {
   Archive,
   ArrowRight,
+  ChevronLeft,
   ChevronDown,
   Circle,
   Clock3,
+  Download,
   ExternalLink,
   Folder,
   FolderOpen,
@@ -83,7 +85,11 @@ const sparkDateFormatter = new Intl.DateTimeFormat('en', {
 type Section = 'spark' | 'library'
 type RunAction = (action: () => Promise<void>, options?: { reloadSparks?: boolean }) => Promise<void>
 
-interface EphemeralNoteState {
+type NotePanelMode = 'chooser' | 'editor'
+
+interface DraftNoteState {
+  id: string
+  title: string
   markdown: string
   sources: CaptureSource[]
 }
@@ -105,11 +111,16 @@ const providerColors: Record<ProviderId, { fg: string; bg: string; border: strin
   chatgpt: { fg: 'providerChatgptFg', bg: 'providerChatgptBg', border: 'providerChatgptBorder' },
   grok: { fg: 'providerGrokFg', bg: 'providerGrokBg', border: 'providerGrokBorder' }
 }
-const emptyNoteState: EphemeralNoteState = {
-  markdown: '',
-  sources: []
+const draftNoteTitle = 'Untitled note'
+
+function createDraftNote(): DraftNoteState {
+  return {
+    id: crypto.randomUUID(),
+    title: draftNoteTitle,
+    markdown: '',
+    sources: []
+  }
 }
-const ephemeralNoteTitle = 'Untitled note'
 
 export function App(): JSX.Element {
   if (!window.adit) {
@@ -629,7 +640,8 @@ interface SessionWorkspaceProps {
 
 function SessionWorkspace({ sessionState, runAction, setSessionState }: SessionWorkspaceProps): JSX.Element {
   const [layout, setLayout] = useState<WorkspaceLayoutRequest>(() => ({ ...defaultWorkspaceLayout }))
-  const [noteState, setNoteState] = useState<EphemeralNoteState>(() => ({ ...emptyNoteState }))
+  const [currentNote, setCurrentNote] = useState<DraftNoteState | null>(null)
+  const [notePanelMode, setNotePanelMode] = useState<NotePanelMode>('chooser')
   const [notePanelRequestedOpen, setNotePanelRequestedOpen] = useState(false)
   const [notePanelRendered, setNotePanelRendered] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
@@ -668,6 +680,11 @@ function SessionWorkspace({ sessionState, runAction, setSessionState }: SessionW
     []
   )
 
+  const createNote = useCallback(() => {
+    setCurrentNote(createDraftNote())
+    setNotePanelMode('editor')
+  }, [])
+
   const toggleNotePanel = useCallback(() => {
     if (notePanelRequestedOpen) {
       setNotePanelRequestedOpen(false)
@@ -681,6 +698,7 @@ function SessionWorkspace({ sessionState, runAction, setSessionState }: SessionW
       return
     }
 
+    setNotePanelMode(currentNote ? 'editor' : 'chooser')
     setNotePanelRequestedOpen(true)
     setNotePanelRendered(true)
 
@@ -690,7 +708,7 @@ function SessionWorkspace({ sessionState, runAction, setSessionState }: SessionW
       secondarySurface: 'note',
       secondaryCollapsed: false
     }))
-  }, [notePanelRequestedOpen])
+  }, [currentNote, notePanelRequestedOpen])
 
   const queueSplitRatio = useCallback((splitRatio: number) => {
     pendingSplitRatio.current = splitRatio
@@ -760,7 +778,15 @@ function SessionWorkspace({ sessionState, runAction, setSessionState }: SessionW
           <Flex h="full" minW="0">
             <Box flex="0 0 auto" w={`${providerWidth}px`} />
             <WorkspaceSplitHandle active={notePanelInteractive} onPointerDown={startSplitDrag} />
-            <EphemeralNotePanel active={notePanelInteractive} noteState={noteState} setNoteState={setNoteState} />
+            <NotePanel
+              active={notePanelInteractive}
+              mode={notePanelMode}
+              note={currentNote}
+              setNote={setCurrentNote}
+              onCreateNote={createNote}
+              onOpenNote={() => setNotePanelMode('editor')}
+              onSwitchNote={() => setNotePanelMode('chooser')}
+            />
           </Flex>
         ) : (
           <Box h="full" />
@@ -924,13 +950,25 @@ function WorkspaceSplitHandle({ active, onPointerDown }: WorkspaceSplitHandlePro
   )
 }
 
-interface EphemeralNotePanelProps {
+interface NotePanelProps {
   active: boolean
-  noteState: EphemeralNoteState
-  setNoteState: Dispatch<SetStateAction<EphemeralNoteState>>
+  mode: NotePanelMode
+  note: DraftNoteState | null
+  setNote: Dispatch<SetStateAction<DraftNoteState | null>>
+  onCreateNote: () => void
+  onOpenNote: () => void
+  onSwitchNote: () => void
 }
 
-function EphemeralNotePanel({ active, noteState, setNoteState }: EphemeralNotePanelProps): JSX.Element {
+function NotePanel({
+  active,
+  mode,
+  note,
+  setNote,
+  onCreateNote,
+  onOpenNote,
+  onSwitchNote
+}: NotePanelProps): JSX.Element {
   const editorRef = useRef<MDXEditorMethods>(null)
   const editorPlugins = useMemo(
     () => [
@@ -944,6 +982,7 @@ function EphemeralNotePanel({ active, noteState, setNoteState }: EphemeralNotePa
     ],
     []
   )
+  const showEditor = mode === 'editor' && note
 
   return (
     <Flex
@@ -955,43 +994,180 @@ function EphemeralNotePanel({ active, noteState, setNoteState }: EphemeralNotePa
       overflow="hidden"
       pointerEvents={active ? 'auto' : 'none'}
     >
-      <Box
-        bg="panelHeader"
-        borderBottomColor="border"
-        borderBottomWidth="1px"
-        flexShrink="0"
-        h="10"
-        position="relative"
-      >
-        <Text
-          color="muted"
-          fontSize="xs"
-          fontWeight="600"
-          left="50%"
-          lineHeight="1"
-          position="absolute"
-          top="50%"
-          transform="translate(-50%, -50%)"
-          whiteSpace="nowrap"
-        >
-          {ephemeralNoteTitle}
-        </Text>
-      </Box>
-      <Box className="adit-mdx-shell" flex="1" minH="0" overflow="hidden">
-        <MDXEditor
-          ref={editorRef}
-          className="adit-mdx-editor"
-          contentEditableClassName="adit-mdx-content"
-          markdown={noteState.markdown}
-          plugins={editorPlugins}
-          onChange={(markdown) =>
-            setNoteState((current) => ({
-              ...current,
-              markdown
-            }))
-          }
-        />
-      </Box>
+      {showEditor ? (
+        <>
+          <Flex
+            align="center"
+            bg="panelHeader"
+            borderBottomColor="border"
+            borderBottomWidth="1px"
+            flexShrink="0"
+            h="10"
+            justify="space-between"
+            px="2"
+            position="relative"
+          >
+            <Button
+              aria-label="Switch note"
+              color="muted"
+              fontSize="xs"
+              fontWeight="600"
+              gap="0.5"
+              h="7"
+              onClick={onSwitchNote}
+              px="2"
+              variant="ghost"
+              _hover={{ bg: 'track', color: 'fg' }}
+            >
+              <Icon as={ChevronLeft} boxSize="3.5" />
+              <Text as="span">Notes</Text>
+            </Button>
+            <Text
+              color="muted"
+              fontSize="xs"
+              fontWeight="600"
+              left="50%"
+              lineHeight="1"
+              maxW="calc(100% - 148px)"
+              overflow="hidden"
+              position="absolute"
+              textOverflow="ellipsis"
+              top="50%"
+              transform="translate(-50%, -50%)"
+              whiteSpace="nowrap"
+            >
+              {note.title}
+            </Text>
+            <Menu.Root positioning={{ placement: 'bottom-end' }}>
+              <Menu.Trigger asChild>
+                <IconButton
+                  aria-label="Note actions"
+                  color="muted"
+                  minW="7"
+                  size="2xs"
+                  variant="ghost"
+                  _hover={{ bg: 'track', color: 'fg' }}
+                >
+                  <Icon as={MoreHorizontal} boxSize="3.5" />
+                </IconButton>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner>
+                  <Menu.Content
+                    bg="cardBg"
+                    borderColor="borderStrong"
+                    borderRadius="11px"
+                    borderWidth="1px"
+                    minW="176px"
+                    p="1.5"
+                    shadow="menu"
+                  >
+                    <Menu.Item value="export-markdown" borderRadius="7px" disabled gap="2">
+                      <Icon as={Download} boxSize="3.5" />
+                      <Text fontSize="sm">Export Markdown</Text>
+                    </Menu.Item>
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
+          </Flex>
+          <Box className="adit-mdx-shell" flex="1" minH="0" overflow="hidden">
+            <MDXEditor
+              ref={editorRef}
+              className="adit-mdx-editor"
+              contentEditableClassName="adit-mdx-content"
+              markdown={note.markdown}
+              plugins={editorPlugins}
+              onChange={(markdown) =>
+                setNote((current) =>
+                  current
+                    ? {
+                        ...current,
+                        markdown
+                      }
+                    : current
+                )
+              }
+            />
+          </Box>
+        </>
+      ) : (
+        <>
+          <Box
+            bg="panelHeader"
+            borderBottomColor="border"
+            borderBottomWidth="1px"
+            flexShrink="0"
+            h="10"
+            position="relative"
+          >
+            <Text
+              color="muted"
+              fontSize="xs"
+              fontWeight="600"
+              left="50%"
+              lineHeight="1"
+              position="absolute"
+              top="50%"
+              transform="translate(-50%, -50%)"
+              whiteSpace="nowrap"
+            >
+              Choose note
+            </Text>
+          </Box>
+          <Stack flex="1" gap="3" minH="0" overflow="auto" p="4">
+            {note && (
+              <Flex
+                as="button"
+                align="center"
+                bg="panel"
+                borderColor="border"
+                borderRadius="10px"
+                borderWidth="1px"
+                color="fg"
+                cursor="pointer"
+                gap="3"
+                minH="54px"
+                px="3.5"
+                textAlign="left"
+                onClick={onOpenNote}
+                _hover={{ bg: 'cardHoverBg', borderColor: 'borderStrong' }}
+              >
+                <Icon as={FolderOpen} boxSize="4" color="accent" flexShrink="0" />
+                <Stack gap="0.5" minW="0">
+                  <Text fontSize="sm" fontWeight="700" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                    {note.title}
+                  </Text>
+                  <Text color="muted" fontSize="xs" fontWeight="500">
+                    Current draft
+                  </Text>
+                </Stack>
+              </Flex>
+            )}
+            <AditEmptyState
+              action={
+                <Button
+                  bg="accent"
+                  color="accentOn"
+                  fontSize="xs"
+                  fontWeight="700"
+                  h="8"
+                  onClick={onCreateNote}
+                  px="3.5"
+                  variant="plain"
+                  _hover={{ bg: 'accentHover' }}
+                >
+                  <Icon as={Plus} boxSize="3.5" />
+                  New note
+                </Button>
+              }
+              description="Library-backed note switching will appear here. For now, create a local draft to keep writing beside this Spark."
+              icon={<Folder />}
+              title="Your Library is coming"
+            />
+          </Stack>
+        </>
+      )}
     </Flex>
   )
 }
@@ -1261,10 +1437,12 @@ function LibraryPlaceholder(): JSX.Element {
 }
 
 function AditEmptyState({
+  action,
   description,
   icon,
   title
 }: {
+  action?: JSX.Element
   description: string
   icon: JSX.Element
   title: string
@@ -1294,6 +1472,7 @@ function AditEmptyState({
               {description}
             </EmptyState.Description>
           </Stack>
+          {action}
         </EmptyState.Content>
       </EmptyState.Root>
     </Flex>

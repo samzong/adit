@@ -32,6 +32,13 @@ Stacked column inside the native window (`hiddenInset` titlebar — real traffic
 
 Adding a provider is one entry in `providerDefs` — the toolbar and menu never grow.
 
+## Buttons & Icons
+
+- Icon-only controls are reserved for low-ambiguity utility actions with established conventions: overflow menus (`...`), search affordances, archive/restore menu triggers, and compact tool controls where nearby context already names the action.
+- Product concepts, navigation, mode switches, and actions that change the current working object need visible text. Use text-only or icon + text, not an unlabeled symbolic icon.
+- In the Note side panel, the editor-to-note-switcher control is navigation, not file browsing. Use a compact `ChevronLeft` + `Notes` button. Do not use a folder icon for this action.
+- Menu triggers may be icon-only, but menu items themselves should carry text labels such as `Export Markdown`.
+
 ## Cards (`PaperCard`)
 
 - `cardBg`, `border`, `card` radius (`14px`), `minH 188px`, `card` shadow. The whole card is the open target (`role="button"`, keyboard-activatable).
