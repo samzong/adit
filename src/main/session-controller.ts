@@ -6,6 +6,7 @@ import type { NoteStore } from './db/notes'
 import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { watchNavigation } from './nav-watcher'
 import { attachProviderView, createProviderView, removeProviderView, resizeProviderView } from './session-view'
+import { SessionBridge } from './session-bridge'
 
 interface ActiveSession {
   provider: ProviderConfig
@@ -19,6 +20,7 @@ interface ActiveSession {
 
 export class SessionController {
   private active: ActiveSession | null = null
+  private readonly bridge = new SessionBridge()
 
   constructor(
     private readonly window: BrowserWindow,
@@ -41,6 +43,11 @@ export class SessionController {
     }
     this.active = active
     active.unwatch = this.attachViewEvents(active)
+    this.bridge.attach({
+      provider: active.provider,
+      webContentsId: active.view.webContents.id,
+      mode: active.mode
+    })
     attachProviderView(this.window, view)
     this.publishState()
     void this.loadCreatedSession(active)
@@ -77,6 +84,11 @@ export class SessionController {
     }
     this.active = active
     active.unwatch = this.attachViewEvents(active)
+    this.bridge.attach({
+      provider: active.provider,
+      webContentsId: active.view.webContents.id,
+      mode: active.mode
+    })
     attachProviderView(this.window, view)
     this.publishState()
     void this.loadSavedSession(active, note)
@@ -95,6 +107,7 @@ export class SessionController {
     this.publishState()
     this.flushActive(active)
     active.unwatch()
+    this.bridge.detach()
     removeProviderView(this.window, active.view)
     this.active = null
     this.publishState()
@@ -139,6 +152,7 @@ export class SessionController {
     }
 
     active.unwatch()
+    this.bridge.detach()
     removeProviderView(this.window, active.view)
     this.active = null
     this.publishState()

@@ -6,6 +6,7 @@ export interface ProviderConfig {
   homeUrl: string
   partition: string
   allowedHosts: string[]
+  adapterAllowedHosts: string[]
   sessionUrlPattern: RegExp
   loginUrlPatterns: RegExp[]
 }
@@ -24,6 +25,7 @@ export const providers = {
     homeUrl: 'https://chatgpt.com/',
     partition: 'persist:chatgpt',
     allowedHosts: ['chatgpt.com', 'auth.openai.com', 'chat.openai.com'],
+    adapterAllowedHosts: ['chatgpt.com'],
     sessionUrlPattern: sessionUrlPatternFor('chatgpt.com'),
     loginUrlPatterns: [/auth\.openai\.com/i, /\/log-?in/i]
   },
@@ -40,6 +42,7 @@ export const providers = {
       'auth.grokipedia.com',
       'auth.grokusercontent.com'
     ],
+    adapterAllowedHosts: ['grok.com'],
     sessionUrlPattern: sessionUrlPatternFor('grok.com'),
     loginUrlPatterns: [/x\.com\/i\/(oauth2|flow\/login)/i, /accounts\.x\.ai\/sign-in/i, /\/log-?in/i]
   }
@@ -71,6 +74,10 @@ export function isAllowedProviderUrl(provider: ProviderConfig, value: string): b
   }
 
   return provider.allowedHosts.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))
+}
+
+export function isAdapterHost(provider: ProviderConfig, hostname: string): boolean {
+  return provider.adapterAllowedHosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))
 }
 
 export function isLoginUrl(provider: ProviderConfig, value: string): boolean {

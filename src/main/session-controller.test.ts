@@ -15,6 +15,13 @@ vi.mock('./session-view', () => ({
   resizeProviderView: vi.fn()
 }))
 
+vi.mock('./session-bridge', () => ({
+  SessionBridge: vi.fn().mockImplementation(() => ({
+    attach: vi.fn(),
+    detach: vi.fn()
+  }))
+}))
+
 describe('SessionController', () => {
   it('flushes an active session without sending IPC after the window is destroyed', () => {
     const note: NoteRow = {
