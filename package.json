@@ -14,6 +14,7 @@
     "postinstall": "electron-builder install-app-deps",
     "rebuild:native": "electron-builder install-app-deps",
     "release:check": "node scripts/check-release-tag.mjs",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint .",

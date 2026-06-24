@@ -62,6 +62,6 @@ Notes are compact macOS-style cards.
 
 ## Verification
 
-- Run `pnpm typecheck` and `pnpm build` after shell UI changes.
+- Run `pnpm check` before every commit and after shell UI changes.
 - The user operates screenshot checks for Adit UI by default. Do not take screenshots unless explicitly asked.
 - If a change touches Electron window chrome, restart the dev app before asking the user to inspect it.

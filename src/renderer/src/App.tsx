@@ -501,7 +501,16 @@ function NewSessionSplit({ busy, onCreateSession }: NewSessionSplitProps): JSX.E
                     gap="2.5"
                     px="2.5"
                     py="2"
+                    transition="background 120ms ease, color 120ms ease"
                     onClick={() => onCreateSession(provider.id)}
+                    _focusVisible={{
+                      bg: 'track',
+                      outlineColor: 'focusRing',
+                      outlineOffset: '2px',
+                      outlineWidth: '1px'
+                    }}
+                    _highlighted={{ bg: 'track', color: 'fg' }}
+                    _hover={{ bg: 'track', color: 'fg' }}
                   >
                     <Flex
                       align="center"
