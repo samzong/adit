@@ -2,7 +2,22 @@
 
 A quiet macOS app for **AI-native notes**.
 
-<img src="docs/images/adit-screenshot.png" alt="Adit screenshot" width="920">
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="docs/images/adit-screenshot.png" alt="Adit Sparks" width="290"><br>
+      <b>Sparks</b>
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/images/adit-screenshot-session.png" alt="Adit session workspace with note panel" width="290"><br>
+      <b>Session</b>
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/images/adit-screenshot-library.png" alt="Adit Library" width="290"><br>
+      <b>Library</b>
+    </td>
+  </tr>
+</table>
 
 ## Speak, don't type
 
@@ -23,13 +38,33 @@ The conversation is where things get made. The Library is what you own afterward
 
 ## How you use it
 
-1. Open Adit.
-2. Pick up an existing Spark or start a new one.
-3. **Talk to your AI** — say what you want, refine as you go.
-4. When something is worth keeping, save it to Library.
-5. Come back later and read your notes without reopening the original chat.
+***Open Adit.***
+
+- Pick up an existing Spark or start a new one.
+- **Talk to your AI** — say what you want, refine as you go.
+- Open the **Note** panel while you work, create a markdown note, and pull selected provider text into it when something is worth keeping.
+- Switch to **Library** later to browse, search, edit, and export your saved notes without reopening the original chat.
 
 You do not need to re-find old results inside ChatGPT or Grok. You keep the good parts yourself.
+
+## Install
+
+Requires macOS on Apple silicon (arm64).
+
+```bash
+brew install samzong/tap/adit
+```
+
+Adit currently ships unsigned. If macOS Gatekeeper blocks launch, clear the quarantine flag and open the app again:
+
+```bash
+xattr -cr /Applications/Adit.app
+open -a Adit
+```
+
+If that still fails, open Finder, right-click `Adit.app`, choose **Open**, then confirm.
+
+You can also download the latest `Adit-*-arm64.dmg` from [GitHub Releases](https://github.com/samzong/adit/releases).
 
 ## What Adit will not become
 
@@ -43,15 +78,18 @@ Adit only saves what **you** choose to save.
 ## What you can use today
 
 - Resume ChatGPT and Grok sessions from a local Spark list
-- Search and archive
-- A calm macOS home for your AI work
-- Library is coming — the tab is there, saving is next
+- Search and archive Sparks
+- Split session workspace with a resizable **Note** panel
+- Create and edit markdown Library documents with a formatting toolbar
+- Pull selected provider text into the active note during a session
+- Browse Library items, search, filter by type, archive, and export Markdown
+- Light and dark macOS shell
 
 ## What's next
 
-- Save the best results from a session into Library
-- Browse everything you have kept, in one place
-- Filter by provider, type, and time
+- One-step save flows from a session into Library
+- Viewers for image, file, code, and web-capture Library items
+- Document history and richer attachment support
 
 ## License
 
