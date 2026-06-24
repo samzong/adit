@@ -27,6 +27,8 @@ mac:
   hardenedRuntime: true
   gatekeeperAssess: false
   notarize: false
+  extendInfo:
+    NSMicrophoneUsageDescription: Adit uses the microphone only when you choose voice input in a provider Spark.
   entitlements: resources/entitlements.mac.plist
   entitlementsInherit: resources/entitlements.mac.plist
   target:

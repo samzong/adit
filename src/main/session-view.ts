@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
+import { configureProviderPermissions } from './provider-permissions'
 
 const HEADER_HEIGHT = 44
 const PROVIDER_LOADING_BACKGROUND = '#111315'
@@ -86,6 +87,7 @@ function configurePartition(provider: ProviderConfig): void {
   }
 
   const providerSession = session.fromPartition(provider.partition)
+  configureProviderPermissions(providerSession, provider)
   providerSession.registerPreloadScript({
     id: 'adit-provider-adapter',
     type: 'frame',
