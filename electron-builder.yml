@@ -9,6 +9,10 @@ files:
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*
+electronLanguages:
+  - en
+  - zh_CN
+  - zh_TW
 extraResources:
   - from: resources/iconTemplate.png
     to: iconTemplate.png
