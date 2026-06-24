@@ -26,6 +26,10 @@ export function shouldAllowProviderPermissionRequest(
   permission: string,
   details: ProviderPermissionRequestDetails
 ): boolean {
+  if (permission === 'clipboard-sanitized-write') {
+    return areProviderUrls(provider, [webContentsUrl, details.securityOrigin, details.requestingUrl])
+  }
+
   if (permission !== 'media' || !isAudioOnly(details.mediaTypes)) {
     return false
   }
@@ -43,6 +47,15 @@ export function shouldAllowProviderPermissionCheck(
   requestingOrigin: string,
   details: ProviderPermissionCheckDetails
 ): boolean {
+  if (permission === 'clipboard-sanitized-write') {
+    return areProviderUrls(provider, [
+      details.embeddingOrigin,
+      details.securityOrigin,
+      requestingOrigin,
+      details.requestingUrl
+    ])
+  }
+
   if (permission !== 'media' || details.mediaType !== 'audio') {
     return false
   }

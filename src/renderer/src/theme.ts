@@ -11,7 +11,7 @@ const config = defineConfig({
       boxSizing: 'border-box'
     },
     'html, body, #root': {
-      minWidth: '920px',
+      minWidth: '1120px',
       minHeight: '620px',
       margin: '0'
     },

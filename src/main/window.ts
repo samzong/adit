@@ -44,9 +44,9 @@ export function createMainWindow(): BrowserWindow {
   installContentSecurityPolicy()
 
   const window = new BrowserWindow({
-    width: 1160,
-    height: 780,
-    minWidth: 920,
+    width: 1440,
+    height: 900,
+    minWidth: 1120,
     minHeight: 620,
     title: 'Adit',
     show: false,

@@ -2,7 +2,6 @@ import { Box, Button, Flex, HStack, Icon, Portal, Text, Tooltip } from '@chakra-
 import { Circle } from 'lucide-react'
 import type { SessionState } from '../../../../shared/types'
 import type { RunAction } from '../../app/types'
-import { providerLabels } from '../sparks/provider'
 
 export function SessionBar({
   sessionState,
@@ -17,7 +16,6 @@ export function SessionBar({
   notePanelOpen: boolean
   onToggleNotePanel: () => void
 }): JSX.Element {
-  const providerLabel = sessionState.provider ? providerLabels[sessionState.provider] : ''
   const backTooltip = sessionState.sessionUrl
     ? "Leaving this view won't interrupt the current reply."
     : 'Adit saves this session after its conversation URL is created.'
@@ -90,9 +88,6 @@ export function SessionBar({
               {sessionState.sessionUrl ? 'Captured' : 'Waiting'}
             </Text>
           </HStack>
-          <Text color="muted" fontSize="xs" maxW="360px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-            {providerLabel}
-          </Text>
           <Button
             aria-pressed={notePanelOpen}
             bg="accent"
