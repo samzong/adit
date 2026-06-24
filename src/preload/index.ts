@@ -1,12 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc'
 import type {
-  ArchiveNoteRequest,
+  ArchiveSparkRequest,
   CreateSessionRequest,
-  NoteRow,
-  NotesListRequest,
+  SparkRow,
+  SparkListRequest,
   OpenSessionRequest,
-  RenameNoteRequest,
+  RenameSparkRequest,
   SessionSelectionResult,
   SessionState,
   ToastMessage
@@ -21,21 +21,21 @@ function onChannel<T>(channel: string, handler: (payload: T) => void): Unsubscri
 }
 
 const api = {
-  listNotes: (request?: NotesListRequest): Promise<NoteRow[]> => ipcRenderer.invoke(IPC.notesList, request),
-  renameNote: (request: RenameNoteRequest): Promise<NoteRow> => ipcRenderer.invoke(IPC.notesRename, request),
-  archiveNote: (request: ArchiveNoteRequest): Promise<NoteRow> => ipcRenderer.invoke(IPC.notesArchive, request),
-  unarchiveNote: (request: ArchiveNoteRequest): Promise<NoteRow> => ipcRenderer.invoke(IPC.notesUnarchive, request),
+  listSparks: (request?: SparkListRequest): Promise<SparkRow[]> => ipcRenderer.invoke(IPC.sparksList, request),
+  renameSpark: (request: RenameSparkRequest): Promise<SparkRow> => ipcRenderer.invoke(IPC.sparksRename, request),
+  archiveSpark: (request: ArchiveSparkRequest): Promise<SparkRow> => ipcRenderer.invoke(IPC.sparksArchive, request),
+  unarchiveSpark: (request: ArchiveSparkRequest): Promise<SparkRow> => ipcRenderer.invoke(IPC.sparksUnarchive, request),
   createSession: (request: CreateSessionRequest): Promise<SessionState> =>
     ipcRenderer.invoke(IPC.sessionCreate, request),
   openSession: (request: OpenSessionRequest): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionOpen, request),
   closeSession: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionClose),
   getSessionState: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionState),
   sessionReadSelection: (): Promise<SessionSelectionResult> => ipcRenderer.invoke(IPC.sessionReadSelection),
-  onNotesChanged: (handler: () => void): Unsubscribe => onChannel<void>(IPC.notesChanged, handler),
+  onSparksChanged: (handler: () => void): Unsubscribe => onChannel<void>(IPC.sparksChanged, handler),
   onSessionStateChanged: (handler: (state: SessionState) => void): Unsubscribe =>
     onChannel<SessionState>(IPC.sessionStateChanged, handler),
-  onSessionTitleUpdated: (handler: (note: NoteRow) => void): Unsubscribe =>
-    onChannel<NoteRow>(IPC.sessionTitleUpdated, handler),
+  onSessionTitleUpdated: (handler: (spark: SparkRow) => void): Unsubscribe =>
+    onChannel<SparkRow>(IPC.sessionTitleUpdated, handler),
   onLoginRequired: (handler: (provider: string) => void): Unsubscribe =>
     onChannel<string>(IPC.sessionLoginRequired, handler),
   onToast: (handler: (message: ToastMessage) => void): Unsubscribe => onChannel<ToastMessage>(IPC.appToast, handler)

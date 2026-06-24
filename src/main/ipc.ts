@@ -2,36 +2,36 @@ import { ipcMain } from 'electron'
 import log from 'electron-log/main'
 import { IPC } from '../shared/ipc'
 import type {
-  ArchiveNoteRequest,
+  ArchiveSparkRequest,
   CreateSessionRequest,
-  NotesListRequest,
+  SparkListRequest,
   OpenSessionRequest,
-  RenameNoteRequest
+  RenameSparkRequest
 } from '../shared/types'
-import type { NoteStore } from './db/notes'
+import type { SparkStore } from './db/sparks'
 import { isProviderId } from './providers'
 import type { SessionController } from './session-controller'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export function registerIpc(store: NoteStore, sessions: SessionController): void {
-  ipcMain.handle(IPC.notesList, (_event, request: NotesListRequest = {}) =>
-    store.listNotes(sanitizeListRequest(request))
+export function registerIpc(store: SparkStore, sessions: SessionController): void {
+  ipcMain.handle(IPC.sparksList, (_event, request: SparkListRequest = {}) =>
+    store.listSparks(sanitizeSparkListRequest(request))
   )
 
-  ipcMain.handle(IPC.notesRename, (_event, request: RenameNoteRequest) => {
-    assertNoteId(request?.id)
+  ipcMain.handle(IPC.sparksRename, (_event, request: RenameSparkRequest) => {
+    assertSparkId(request?.id)
     assertString(request?.title, 'Title is required')
-    return store.renameNote(request.id, request.title)
+    return store.renameSpark(request.id, request.title)
   })
 
-  ipcMain.handle(IPC.notesArchive, (_event, request: ArchiveNoteRequest) => {
-    assertNoteId(request?.id)
+  ipcMain.handle(IPC.sparksArchive, (_event, request: ArchiveSparkRequest) => {
+    assertSparkId(request?.id)
     return store.setArchived(request.id, true)
   })
 
-  ipcMain.handle(IPC.notesUnarchive, (_event, request: ArchiveNoteRequest) => {
-    assertNoteId(request?.id)
+  ipcMain.handle(IPC.sparksUnarchive, (_event, request: ArchiveSparkRequest) => {
+    assertSparkId(request?.id)
     return store.setArchived(request.id, false)
   })
 
@@ -44,7 +44,7 @@ export function registerIpc(store: NoteStore, sessions: SessionController): void
   })
 
   ipcMain.handle(IPC.sessionOpen, (_event, request: OpenSessionRequest) => {
-    assertNoteId(request?.id)
+    assertSparkId(request?.id)
     return sessions.open(request.id)
   })
 
@@ -53,7 +53,7 @@ export function registerIpc(store: NoteStore, sessions: SessionController): void
   ipcMain.handle(IPC.sessionReadSelection, () => sessions.readSelection())
 }
 
-function sanitizeListRequest(request: NotesListRequest): NotesListRequest {
+function sanitizeSparkListRequest(request: SparkListRequest): SparkListRequest {
   return {
     archived: Boolean(request.archived),
     query: typeof request.query === 'string' ? request.query : ''
@@ -66,9 +66,9 @@ function assertString(value: unknown, message: string): asserts value is string 
   }
 }
 
-function assertNoteId(value: unknown): asserts value is string {
+function assertSparkId(value: unknown): asserts value is string {
   if (typeof value !== 'string' || !UUID_PATTERN.test(value)) {
-    log.warn('Rejected IPC request with malformed note id', value)
-    throw new Error('Valid note id is required')
+    log.warn('Rejected IPC request with malformed Spark id', value)
+    throw new Error('Valid Spark id is required')
   }
 }

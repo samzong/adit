@@ -46,9 +46,9 @@ The app should feel like a quiet macOS utility, not a generic web dashboard.
 - Keep toolbar-to-content spacing around 20px.
 - Align text and controls to a consistent grid.
 
-## Cards
+## Spark Cards
 
-Notes are compact macOS-style cards.
+Sparks are compact macOS-style cards.
 
 - Use light rounded corners, preferably 8-10px.
 - Use quaternary/quinary-style backgrounds rather than pure black in dark mode.

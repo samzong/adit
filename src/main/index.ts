@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { app, Menu, nativeImage, Tray, type BrowserWindow } from 'electron'
 import log from 'electron-log/main'
 import { openDatabase, type DatabaseConnection } from './db/connection'
-import { NoteStore } from './db/notes'
+import { SparkStore } from './db/sparks'
 import { registerIpc } from './ipc'
 import { providers } from './providers'
 import { SessionController } from './session-controller'
@@ -35,7 +35,7 @@ if (!acquiredSingleInstanceLock) {
 
   void app.whenReady().then(() => {
     database = openDatabase()
-    const store = new NoteStore(database)
+    const store = new SparkStore(database)
     mainWindow = createMainWindow()
     sessions = new SessionController(mainWindow, store)
 
@@ -162,8 +162,8 @@ function configureMenubar(): void {
       ...providerEntries,
       { type: 'separator' },
       {
-        label: 'Recent Notes',
-        click: () => showRecentNotes()
+        label: 'Recent Sparks',
+        click: () => showRecentSparks()
       },
       { type: 'separator' },
       {
@@ -209,7 +209,7 @@ function startSession(providerId: ProviderId): void {
   sessions?.create(providerId)
 }
 
-function showRecentNotes(): void {
+function showRecentSparks(): void {
   showMainWindow()
   sessions?.close()
 }

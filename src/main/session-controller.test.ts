@@ -1,7 +1,7 @@
 import type { BrowserWindow, WebContentsView } from 'electron'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CaptureSource, NoteRow } from '../shared/types'
-import type { NoteStore } from './db/notes'
+import type { CaptureSource, SparkRow } from '../shared/types'
+import type { SparkStore } from './db/sparks'
 import { SessionController } from './session-controller'
 
 const bridgeReadSelection = vi.hoisted(() => vi.fn())
@@ -34,8 +34,8 @@ describe('SessionController', () => {
   })
 
   it('flushes an active session without sending IPC after the window is destroyed', () => {
-    const note: NoteRow = {
-      id: 'note-1',
+    const spark: SparkRow = {
+      id: 'spark-1',
       provider: 'chatgpt',
       session_url: 'https://chatgpt.com/c/00000000-0000-0000-0000-000000000000',
       title: 'Updated title',
@@ -55,10 +55,10 @@ describe('SessionController', () => {
         send
       }
     } as unknown as BrowserWindow
-    const updateTitleFromProvider = vi.fn(() => note)
+    const updateTitleFromProvider = vi.fn(() => spark)
     const store = {
       updateTitleFromProvider
-    } as unknown as NoteStore
+    } as unknown as SparkStore
     const view = {
       webContents: {
         getTitle: () => 'Latest title'
@@ -72,7 +72,7 @@ describe('SessionController', () => {
           provider: { id: 'chatgpt' }
           view: WebContentsView
           mode: 'active_saved'
-          noteId: string
+          sparkId: string
           sessionUrl: string
           title: null
           unwatch: () => void
@@ -82,14 +82,14 @@ describe('SessionController', () => {
       provider: { id: 'chatgpt' },
       view,
       mode: 'active_saved',
-      noteId: note.id,
-      sessionUrl: note.session_url as string,
+      sparkId: spark.id,
+      sessionUrl: spark.session_url as string,
       title: null,
       unwatch: () => undefined
     }
 
     expect(() => controller.flushSync()).not.toThrow()
-    expect(updateTitleFromProvider).toHaveBeenCalledWith(note.id, 'Latest title')
+    expect(updateTitleFromProvider).toHaveBeenCalledWith(spark.id, 'Latest title')
     expect(send).not.toHaveBeenCalled()
   })
 
@@ -107,7 +107,7 @@ describe('SessionController', () => {
         mainFrame: { url: 'https://chatgpt.com/c/00000000-0000-0000-0000-000000000000' }
       }
     } as unknown as WebContentsView
-    const controller = new SessionController(window, {} as NoteStore)
+    const controller = new SessionController(window, {} as SparkStore)
     bridgeReadSelection.mockImplementation((source: unknown) => Promise.resolve({ selection: null, source }))
     ;(
       controller as unknown as {
@@ -115,7 +115,7 @@ describe('SessionController', () => {
           provider: { id: 'chatgpt' }
           view: WebContentsView
           mode: 'active_saved'
-          noteId: string
+          sparkId: string
           sessionUrl: string
           title: null
           unwatch: () => void
@@ -125,7 +125,7 @@ describe('SessionController', () => {
       provider: { id: 'chatgpt' },
       view,
       mode: 'active_saved',
-      noteId: 'note-1',
+      sparkId: 'spark-1',
       sessionUrl: 'https://chatgpt.com/c/00000000-0000-0000-0000-000000000000',
       title: null,
       unwatch: () => undefined

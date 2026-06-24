@@ -30,17 +30,17 @@ import {
   Sparkles
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import type { NoteRow, ProviderId, SessionState, ToastMessage } from '../../shared/types'
+import type { SparkRow, ProviderId, SessionState, ToastMessage } from '../../shared/types'
 
 const emptyState: SessionState = {
   mode: 'list',
   provider: null,
-  noteId: null,
+  sparkId: null,
   sessionUrl: null,
   title: null
 }
 const repositoryUrl = 'https://github.com/samzong/adit'
-const noteDateFormatter = new Intl.DateTimeFormat('en', {
+const sparkDateFormatter = new Intl.DateTimeFormat('en', {
   month: 'short',
   day: 'numeric',
   hour: '2-digit',
@@ -48,7 +48,7 @@ const noteDateFormatter = new Intl.DateTimeFormat('en', {
 })
 
 type Section = 'spark' | 'library'
-type RunAction = (action: () => Promise<void>, options?: { reloadNotes?: boolean }) => Promise<void>
+type RunAction = (action: () => Promise<void>, options?: { reloadSparks?: boolean }) => Promise<void>
 
 interface ProviderMeta {
   id: ProviderId
@@ -77,7 +77,7 @@ export function App(): JSX.Element {
 }
 
 function ElectronApp(): JSX.Element {
-  const [notes, setNotes] = useState<NoteRow[]>([])
+  const [sparks, setSparks] = useState<SparkRow[]>([])
   const [section, setSection] = useState<Section>('spark')
   const [archived, setArchived] = useState(false)
   const [query, setQuery] = useState('')
@@ -87,10 +87,10 @@ function ElectronApp(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const loadNotes = useCallback(async () => {
+  const loadSparks = useCallback(async () => {
     setError(null)
-    const nextNotes = await window.adit.listNotes({ archived, query })
-    setNotes(nextNotes)
+    const nextSparks = await window.adit.listSparks({ archived, query })
+    setSparks(nextSparks)
   }, [archived, query])
 
   useEffect(() => {
@@ -119,8 +119,8 @@ function ElectronApp(): JSX.Element {
   useEffect(() => {
     let cancelled = false
     const timeout = window.setTimeout(() => {
-      void loadNotes()
-        .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load notes.'))
+      void loadSparks()
+        .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load Sparks.'))
         .finally(() => {
           if (!cancelled) {
             setLoading(false)
@@ -132,12 +132,14 @@ function ElectronApp(): JSX.Element {
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [loadNotes])
+  }, [loadSparks])
 
   useEffect(() => {
     const unsubscribers = [
-      window.adit.onNotesChanged(() => {
-        void loadNotes().catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load notes.'))
+      window.adit.onSparksChanged(() => {
+        void loadSparks().catch((reason) =>
+          setError(reason instanceof Error ? reason.message : 'Failed to load Sparks.')
+        )
       }),
       window.adit.onSessionStateChanged(setSessionState),
       window.adit.onToast((message) => {
@@ -147,7 +149,7 @@ function ElectronApp(): JSX.Element {
     ]
 
     return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
-  }, [loadNotes])
+  }, [loadSparks])
 
   const runAction = useCallback<RunAction>(
     async (action, options = {}) => {
@@ -156,8 +158,8 @@ function ElectronApp(): JSX.Element {
 
       try {
         await action()
-        if (options.reloadNotes) {
-          await loadNotes()
+        if (options.reloadSparks) {
+          await loadSparks()
         }
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : 'Action failed.')
@@ -165,7 +167,7 @@ function ElectronApp(): JSX.Element {
         setBusy(false)
       }
     },
-    [loadNotes]
+    [loadSparks]
   )
 
   const createSession = useCallback(
@@ -210,11 +212,11 @@ function ElectronApp(): JSX.Element {
           {section === 'library' ? (
             <LibraryPlaceholder />
           ) : (
-            <NotesContent
+            <SparksContent
               archived={archived}
               busy={busy}
               loading={loading}
-              notes={notes}
+              sparks={sparks}
               runAction={runAction}
               setSessionState={setSessionState}
             />
@@ -648,21 +650,30 @@ function SessionBar({ sessionState, runAction, setSessionState }: SessionBarProp
   )
 }
 
-interface NotesContentProps {
+interface SparksContentProps {
   archived: boolean
   busy: boolean
   loading: boolean
-  notes: NoteRow[]
+  sparks: SparkRow[]
   runAction: RunAction
   setSessionState: (state: SessionState) => void
 }
 
-function NotesContent({ archived, busy, loading, notes, runAction, setSessionState }: NotesContentProps): JSX.Element {
+function SparksContent({
+  archived,
+  busy,
+  loading,
+  sparks,
+  runAction,
+  setSessionState
+}: SparksContentProps): JSX.Element {
   if (loading) {
-    return <AditEmptyState description="Loading local session entrances..." icon={<Sparkles />} title="Loading notes" />
+    return (
+      <AditEmptyState description="Loading local session entrances..." icon={<Sparkles />} title="Loading Sparks" />
+    )
   }
 
-  if (notes.length === 0) {
+  if (sparks.length === 0) {
     return (
       <AditEmptyState
         description={
@@ -678,26 +689,26 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
 
   return (
     <Box as="ul" display="grid" gap="4" gridTemplateColumns="repeat(4, minmax(0, 1fr))" listStyle="none" m="0" p="0">
-      {notes.map((note) => (
-        <Box as="li" key={note.id} display="flex">
+      {sparks.map((spark) => (
+        <Box as="li" key={spark.id} display="flex">
           <PaperCard
             archived={archived}
             busy={busy}
-            note={note}
+            spark={spark}
             onArchive={() => {
               void runAction(
                 async () => {
                   if (archived) {
-                    await window.adit.unarchiveNote({ id: note.id })
+                    await window.adit.unarchiveSpark({ id: spark.id })
                   } else {
-                    await window.adit.archiveNote({ id: note.id })
+                    await window.adit.archiveSpark({ id: spark.id })
                   }
                 },
-                { reloadNotes: true }
+                { reloadSparks: true }
               )
             }}
             onOpen={() => {
-              void runAction(async () => setSessionState(await window.adit.openSession({ id: note.id })))
+              void runAction(async () => setSessionState(await window.adit.openSession({ id: spark.id })))
             }}
           />
         </Box>
@@ -709,17 +720,17 @@ function NotesContent({ archived, busy, loading, notes, runAction, setSessionSta
 interface PaperCardProps {
   archived: boolean
   busy: boolean
-  note: NoteRow
+  spark: SparkRow
   onArchive: () => void
   onOpen: () => void
 }
 
-function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps): JSX.Element {
+function PaperCard({ archived, busy, spark, onArchive, onOpen }: PaperCardProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <Flex
-      aria-label={`Open ${note.title}`}
+      aria-label={`Open ${spark.title}`}
       role="button"
       tabIndex={0}
       direction="column"
@@ -758,9 +769,9 @@ function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps):
       }}
     >
       <Stack gap="3.5" minW="0">
-        <ProviderPill provider={note.provider} />
+        <ProviderPill provider={spark.provider} />
         <Text textStyle="cardTitle" color="fg" lineClamp="2" minW="0" overflow="hidden">
-          {note.title}
+          {spark.title}
         </Text>
         <Text
           color="muted"
@@ -770,7 +781,7 @@ function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps):
           textOverflow="ellipsis"
           whiteSpace="nowrap"
         >
-          {formatSessionHost(note.session_url)}
+          {formatSessionHost(spark.session_url)}
         </Text>
       </Stack>
 
@@ -780,7 +791,7 @@ function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps):
           <HStack color="faint" gap="1.5" minW="0">
             <Icon as={Clock3} boxSize="3.5" />
             <Text fontSize="12.5px" fontWeight="500" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-              {formatDate(note.updated_at)}
+              {formatDate(spark.updated_at)}
             </Text>
           </HStack>
           <HStack color="accent" flexShrink="0" gap="1.5">
@@ -804,7 +815,7 @@ function PaperCard({ archived, busy, note, onArchive, onOpen }: PaperCardProps):
         <Menu.Root onOpenChange={(details) => setMenuOpen(details.open)} positioning={{ placement: 'bottom-end' }}>
           <Menu.Trigger asChild>
             <IconButton
-              aria-label="Note actions"
+              aria-label="Spark actions"
               color="faint"
               disabled={busy}
               minW="6"
@@ -975,7 +986,7 @@ function StandaloneNotice(): JSX.Element {
 }
 
 function formatDate(value: number): string {
-  return noteDateFormatter.format(value)
+  return sparkDateFormatter.format(value)
 }
 
 function formatSessionHost(sessionUrl: string | null): string {

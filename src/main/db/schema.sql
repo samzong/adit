@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS notes (
+CREATE TABLE IF NOT EXISTS sparks (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL CHECK (provider IN ('chatgpt', 'grok')),
   session_url TEXT,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS notes (
   archived INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE INDEX IF NOT EXISTS idx_notes_main ON notes(archived, updated_at DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_notes_session_url
-  ON notes(provider, session_url) WHERE session_url IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title);
+CREATE INDEX IF NOT EXISTS idx_sparks_main ON sparks(archived, updated_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sparks_session_url
+  ON sparks(provider, session_url) WHERE session_url IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sparks_title ON sparks(title);

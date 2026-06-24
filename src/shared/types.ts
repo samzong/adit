@@ -2,7 +2,7 @@ import type { AdapterCapturedSelection, ProviderBridgeErrorCode } from './provid
 
 export type ProviderId = 'chatgpt' | 'grok'
 
-export interface NoteRow {
+export interface SparkRow {
   id: string
   provider: ProviderId
   session_url: string | null
@@ -14,17 +14,17 @@ export interface NoteRow {
   archived: number
 }
 
-export interface NotesListRequest {
+export interface SparkListRequest {
   archived?: boolean
   query?: string
 }
 
-export interface RenameNoteRequest {
+export interface RenameSparkRequest {
   id: string
   title: string
 }
 
-export interface ArchiveNoteRequest {
+export interface ArchiveSparkRequest {
   id: string
 }
 
@@ -41,7 +41,7 @@ export type SessionMode = 'list' | 'creating' | 'active_ephemeral' | 'active_sav
 export interface SessionState {
   mode: SessionMode
   provider: ProviderId | null
-  noteId: string | null
+  sparkId: string | null
   sessionUrl: string | null
   title: string | null
 }
