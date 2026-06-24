@@ -30,6 +30,98 @@ const config = defineConfig({
     },
     '.app-toolbar': {
       userSelect: 'none'
+    },
+    '.adit-mdx-shell': {
+      height: '100%'
+    },
+    '.adit-mdx-editor.adit-mdx-editor': {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: '#fdfdfb',
+      color: '#26241f',
+      '--font-body': hankenStack,
+      '--font-mono': splineMonoStack,
+      '--adit-mdx-card': '#fdfdfb',
+      '--adit-mdx-panel': '#f7f6f3',
+      '--adit-mdx-panel-header': '#f1efea',
+      '--adit-mdx-track': '#e7e4dd',
+      '--adit-mdx-border': '#e5e2da',
+      '--adit-mdx-border-strong': '#d6d2c8',
+      '--adit-mdx-fg': '#26241f',
+      '--adit-mdx-fg-soft': '#403d36',
+      '--adit-mdx-muted': '#827d72',
+      '--adit-mdx-accent': '#b06440',
+      '--adit-mdx-accent-hover': '#9c5635',
+      '--adit-mdx-accent-on': '#ffffff',
+      '--basePageBg': 'var(--adit-mdx-card)',
+      '--baseBase': 'var(--adit-mdx-panel)',
+      '--baseBgSubtle': 'var(--adit-mdx-panel-header)',
+      '--baseBg': 'var(--adit-mdx-panel-header)',
+      '--baseBgHover': 'var(--adit-mdx-track)',
+      '--baseBgActive': 'var(--adit-mdx-track)',
+      '--baseLine': 'var(--adit-mdx-border)',
+      '--baseBorder': 'var(--adit-mdx-border)',
+      '--baseBorderHover': 'var(--adit-mdx-border-strong)',
+      '--baseText': 'var(--adit-mdx-muted)',
+      '--baseTextContrast': 'var(--adit-mdx-fg)',
+      '--accentBase': 'var(--adit-mdx-accent)',
+      '--accentBgSubtle': 'var(--adit-mdx-panel-header)',
+      '--accentBg': 'var(--adit-mdx-track)',
+      '--accentBgHover': 'var(--adit-mdx-track)',
+      '--accentBgActive': 'var(--adit-mdx-track)',
+      '--accentLine': 'var(--adit-mdx-border-strong)',
+      '--accentBorder': 'var(--adit-mdx-border-strong)',
+      '--accentBorderHover': 'var(--adit-mdx-accent)',
+      '--accentSolid': 'var(--adit-mdx-accent)',
+      '--accentSolidHover': 'var(--adit-mdx-accent-hover)',
+      '--accentText': 'var(--adit-mdx-accent)',
+      '--accentTextContrast': 'var(--adit-mdx-accent-on)'
+    },
+    'html.dark .adit-mdx-editor.adit-mdx-editor': {
+      backgroundColor: '#2a2825',
+      color: '#f0eee8',
+      '--adit-mdx-card': '#2a2825',
+      '--adit-mdx-panel': '#211f1d',
+      '--adit-mdx-panel-header': '#272522',
+      '--adit-mdx-track': '#242220',
+      '--adit-mdx-border': '#383530',
+      '--adit-mdx-border-strong': '#494540',
+      '--adit-mdx-fg': '#f0eee8',
+      '--adit-mdx-fg-soft': '#dcd8d0',
+      '--adit-mdx-muted': '#9b958a',
+      '--adit-mdx-accent': '#d18a5e',
+      '--adit-mdx-accent-hover': '#c47d52',
+      '--adit-mdx-accent-on': '#ffffff'
+    },
+    '.adit-mdx-editor .adit-mdx-content.adit-mdx-content': {
+      backgroundColor: 'var(--adit-mdx-card)',
+      caretColor: 'var(--adit-mdx-accent)',
+      color: 'var(--adit-mdx-fg)',
+      fontFamily: hankenStack,
+      fontSize: '14px',
+      lineHeight: '1.6',
+      minHeight: '100%',
+      outline: 'none',
+      padding: '16px 20px'
+    },
+    '.adit-mdx-editor .adit-mdx-content p': {
+      margin: '0 0 0.8em'
+    },
+    '.adit-mdx-editor .adit-mdx-content blockquote': {
+      backgroundColor: 'var(--adit-mdx-panel-header)',
+      borderLeft: '3px solid var(--adit-mdx-accent)',
+      color: 'var(--adit-mdx-fg-soft)',
+      margin: '0 0 1em',
+      padding: '8px 12px'
+    },
+    '.adit-mdx-editor .adit-mdx-content pre': {
+      backgroundColor: 'var(--adit-mdx-panel-header)',
+      border: '1px solid var(--adit-mdx-border)',
+      borderRadius: '8px',
+      fontFamily: splineMonoStack,
+      overflowX: 'auto',
+      padding: '12px'
     }
   },
   theme: {
@@ -52,7 +144,7 @@ const config = defineConfig({
           fontSize: '19px',
           fontWeight: '600',
           lineHeight: '1.22',
-          letterSpacing: '-0.012em'
+          letterSpacing: '0'
         }
       },
       headline: {

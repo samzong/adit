@@ -7,7 +7,8 @@ import type {
   RenameSparkRequest,
   SessionSelectionResult,
   SessionState,
-  ToastMessage
+  ToastMessage,
+  WorkspaceLayoutRequest
 } from '../../shared/types'
 
 type Unsubscribe = () => void
@@ -24,6 +25,7 @@ declare global {
       closeSession: () => Promise<SessionState>
       getSessionState: () => Promise<SessionState>
       sessionReadSelection: () => Promise<SessionSelectionResult>
+      setWorkspaceLayout: (request: WorkspaceLayoutRequest) => Promise<void>
       onSparksChanged: (handler: () => void) => Unsubscribe
       onSessionStateChanged: (handler: (state: SessionState) => void) => Unsubscribe
       onSessionTitleUpdated: (handler: (spark: SparkRow) => void) => Unsubscribe

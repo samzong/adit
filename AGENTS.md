@@ -65,3 +65,11 @@ Sparks are compact macOS-style cards.
 - Run `pnpm check` before every commit and after shell UI changes.
 - The user operates screenshot checks for Adit UI by default. Do not take screenshots unless explicitly asked.
 - If a change touches Electron window chrome, restart the dev app before asking the user to inspect it.
+
+## Electron Debugging
+
+- For split UI, `WebContentsView`, or renderer/main geometry bugs, start dev with both debug ports:
+  `pnpm dev --remoteDebuggingPort 9223 --inspect 9229`
+- `--remoteDebuggingPort` is the electron-vite option for renderer CDP. It becomes Electron's `--remote-debugging-port`; verify with `curl http://127.0.0.1:9223/json/list`.
+- `--inspect` opens the main-process Node inspector. Verify with `curl http://127.0.0.1:9229/json/list`.
+- Use renderer CDP for DOM rectangles and React shell state. Use main inspector for `SessionController`, `resizeProviderView()`, and `WebContentsView.setBounds()` state. Do not infer native view bounds from DOM alone.

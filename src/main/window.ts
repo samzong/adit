@@ -59,6 +59,8 @@ export function createMainWindow(): BrowserWindow {
     }
   })
 
+  lockShellZoom(window)
+
   window.once('ready-to-show', () => {
     window.show()
   })
@@ -82,6 +84,17 @@ export function createMainWindow(): BrowserWindow {
   })
 
   return window
+}
+
+function lockShellZoom(window: BrowserWindow): void {
+  const resetZoom = (): void => window.webContents.setZoomFactor(1)
+
+  resetZoom()
+  window.webContents.on('did-finish-load', resetZoom)
+  window.webContents.on('zoom-changed', (event) => {
+    event.preventDefault()
+    resetZoom()
+  })
 }
 
 function isExternalHttpUrl(url: string): boolean {

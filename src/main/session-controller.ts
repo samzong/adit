@@ -1,7 +1,15 @@
 import type { BrowserWindow, WebContentsView } from 'electron'
 import log from 'electron-log/main'
 import { IPC } from '../shared/ipc'
-import type { CaptureSource, SparkRow, ProviderId, SessionSelectionResult, SessionState } from '../shared/types'
+import type {
+  CaptureSource,
+  SparkRow,
+  ProviderId,
+  SessionSelectionResult,
+  SessionState,
+  WorkspaceLayoutRequest
+} from '../shared/types'
+import { clampWorkspaceSplitRatio, defaultWorkspaceLayout } from '../shared/workspace-layout'
 import type { SparkStore } from './db/sparks'
 import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { watchNavigation } from './nav-watcher'
@@ -20,6 +28,7 @@ interface ActiveSession {
 
 export class SessionController {
   private active: ActiveSession | null = null
+  private workspaceLayout: WorkspaceLayoutRequest = defaultWorkspaceLayout
   private readonly bridge = new SessionBridge()
 
   constructor(
@@ -48,7 +57,7 @@ export class SessionController {
       webContentsId: active.view.webContents.id,
       mode: active.mode
     })
-    attachProviderView(this.window, view)
+    attachProviderView(this.window, view, this.workspaceLayout)
     this.publishState()
     void this.loadCreatedSession(active)
 
@@ -89,7 +98,7 @@ export class SessionController {
       webContentsId: active.view.webContents.id,
       mode: active.mode
     })
-    attachProviderView(this.window, view)
+    attachProviderView(this.window, view, this.workspaceLayout)
     this.publishState()
     void this.loadSavedSession(active, spark)
 
@@ -97,6 +106,8 @@ export class SessionController {
   }
 
   close(): SessionState {
+    this.workspaceLayout = defaultWorkspaceLayout
+
     if (!this.active) {
       this.publishState()
       return this.getState()
@@ -122,8 +133,13 @@ export class SessionController {
 
   resize(): void {
     if (this.active) {
-      resizeProviderView(this.window, this.active.view)
+      resizeProviderView(this.window, this.active.view, this.workspaceLayout)
     }
+  }
+
+  setWorkspaceLayout(request: WorkspaceLayoutRequest): void {
+    this.workspaceLayout = sanitizeWorkspaceLayout(request)
+    this.resize()
   }
 
   getState(): SessionState {
@@ -164,6 +180,7 @@ export class SessionController {
     this.bridge.detach()
     removeProviderView(this.window, active.view)
     this.active = null
+    this.workspaceLayout = defaultWorkspaceLayout
     this.publishState()
   }
 
@@ -331,6 +348,19 @@ function formatError(reason: unknown): string {
   }
 
   return typeof reason === 'string' ? reason : 'Unknown error'
+}
+
+function sanitizeWorkspaceLayout(request: Partial<WorkspaceLayoutRequest> | null | undefined): WorkspaceLayoutRequest {
+  const primarySurface = request?.primarySurface === 'note' ? 'note' : 'spark'
+  const secondarySurface =
+    request?.secondarySurface === 'note' || request?.secondarySurface === 'spark' ? request.secondarySurface : null
+
+  return {
+    primarySurface,
+    secondarySurface,
+    secondaryCollapsed: Boolean(request?.secondaryCollapsed),
+    splitRatio: clampWorkspaceSplitRatio(Number(request?.splitRatio))
+  }
 }
 
 function createCaptureSource(active: ActiveSession): CaptureSource {

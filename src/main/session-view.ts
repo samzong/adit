@@ -1,9 +1,15 @@
 import { join } from 'node:path'
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
+import type { WorkspaceLayoutRequest } from '../shared/types'
+import {
+  WORKSPACE_NOTE_MIN_WIDTH,
+  WORKSPACE_PROVIDER_MIN_WIDTH,
+  WORKSPACE_SPLIT_HANDLE_WIDTH
+} from '../shared/workspace-layout'
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { configureProviderPermissions } from './provider-permissions'
 
-const HEADER_HEIGHT = 44
+const HEADER_HEIGHT = 46
 const PROVIDER_LOADING_BACKGROUND = '#111315'
 const chromeMajorVersion = process.versions.chrome?.split('.')[0] ?? '142'
 const chromeUserAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajorVersion}.0.0.0 Safari/537.36`
@@ -41,21 +47,23 @@ export function createProviderView(window: BrowserWindow, provider: ProviderConf
   return view
 }
 
-export function attachProviderView(window: BrowserWindow, view: WebContentsView): void {
+export function attachProviderView(window: BrowserWindow, view: WebContentsView, layout: WorkspaceLayoutRequest): void {
   if (!attachedProviderViews.has(view)) {
     window.contentView.addChildView(view)
     attachedProviderViews.add(view)
   }
 
-  resizeProviderView(window, view)
+  resizeProviderView(window, view, layout)
 }
 
-export function resizeProviderView(window: BrowserWindow, view: WebContentsView): void {
+export function resizeProviderView(window: BrowserWindow, view: WebContentsView, layout: WorkspaceLayoutRequest): void {
   const bounds = window.getContentBounds()
+  const providerBounds = calculateProviderBounds(bounds.width, layout)
+
   view.setBounds({
-    x: 0,
+    x: providerBounds.x,
     y: HEADER_HEIGHT,
-    width: bounds.width,
+    width: providerBounds.width,
     height: Math.max(0, bounds.height - HEADER_HEIGHT)
   })
 }
@@ -79,6 +87,43 @@ function providerWebPreferences(provider: ProviderConfig): WebPreferences {
     sandbox: true,
     webSecurity: true
   }
+}
+
+function calculateProviderBounds(contentWidth: number, layout: WorkspaceLayoutRequest): { x: number; width: number } {
+  if (!layout.secondarySurface || layout.secondaryCollapsed || contentWidth < requiredExpandedWidth(layout)) {
+    if (layout.primarySurface === 'spark') {
+      return { x: 0, width: contentWidth }
+    }
+
+    return layout.secondarySurface === 'spark' ? { x: contentWidth, width: 0 } : { x: 0, width: contentWidth }
+  }
+
+  const primaryMinWidth = layout.primarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
+  const secondaryMinWidth =
+    layout.secondarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
+  const maxPrimaryWidth = contentWidth - secondaryMinWidth - WORKSPACE_SPLIT_HANDLE_WIDTH
+  const primaryWidth = Math.min(
+    maxPrimaryWidth,
+    Math.max(primaryMinWidth, Math.round(contentWidth * layout.splitRatio))
+  )
+
+  if (layout.primarySurface === 'spark') {
+    return { x: 0, width: primaryWidth }
+  }
+
+  if (layout.secondarySurface === 'spark') {
+    const width = contentWidth - primaryWidth - WORKSPACE_SPLIT_HANDLE_WIDTH
+    return { x: primaryWidth + WORKSPACE_SPLIT_HANDLE_WIDTH, width }
+  }
+
+  return { x: 0, width: contentWidth }
+}
+
+function requiredExpandedWidth(layout: WorkspaceLayoutRequest): number {
+  const primaryMinWidth = layout.primarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
+  const secondaryMinWidth =
+    layout.secondarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
+  return primaryMinWidth + secondaryMinWidth + WORKSPACE_SPLIT_HANDLE_WIDTH
 }
 
 function configurePartition(provider: ProviderConfig): void {

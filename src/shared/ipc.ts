@@ -9,6 +9,7 @@ export const IPC = {
   sessionClose: 'session:close',
   sessionState: 'session:state',
   sessionReadSelection: 'session:read-selection',
+  workspaceLayoutSet: 'workspace:layout-set',
   sessionStateChanged: 'session:state-changed',
   sessionTitleUpdated: 'session:title-updated',
   sessionLoginRequired: 'session:login-required',

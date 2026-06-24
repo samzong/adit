@@ -9,7 +9,8 @@ import type {
   RenameSparkRequest,
   SessionSelectionResult,
   SessionState,
-  ToastMessage
+  ToastMessage,
+  WorkspaceLayoutRequest
 } from '../shared/types'
 
 type Unsubscribe = () => void
@@ -31,6 +32,8 @@ const api = {
   closeSession: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionClose),
   getSessionState: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionState),
   sessionReadSelection: (): Promise<SessionSelectionResult> => ipcRenderer.invoke(IPC.sessionReadSelection),
+  setWorkspaceLayout: (request: WorkspaceLayoutRequest): Promise<void> =>
+    ipcRenderer.invoke(IPC.workspaceLayoutSet, request),
   onSparksChanged: (handler: () => void): Unsubscribe => onChannel<void>(IPC.sparksChanged, handler),
   onSessionStateChanged: (handler: (state: SessionState) => void): Unsubscribe =>
     onChannel<SessionState>(IPC.sessionStateChanged, handler),

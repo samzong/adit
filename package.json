@@ -23,6 +23,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.{yml,yaml}\" \"*.{ts,js,json}\""
   },
   "dependencies": {
+    "@mdxeditor/editor": "^4.0.4",
     "better-sqlite3": "^12.11.1",
     "electron-log": "^5.3.4"
   },

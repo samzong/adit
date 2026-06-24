@@ -14,6 +14,17 @@ import {
   Tooltip
 } from '@chakra-ui/react'
 import {
+  MDXEditor,
+  codeBlockPlugin,
+  headingsPlugin,
+  linkPlugin,
+  listsPlugin,
+  markdownShortcutPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  type MDXEditorMethods
+} from '@mdxeditor/editor'
+import {
   Archive,
   ArrowRight,
   ChevronDown,
@@ -29,8 +40,31 @@ import {
   Search,
   Sparkles
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import type { SparkRow, ProviderId, SessionState, ToastMessage } from '../../shared/types'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type PointerEvent as ReactPointerEvent,
+  type SetStateAction
+} from 'react'
+import type {
+  CaptureSource,
+  SparkRow,
+  ProviderId,
+  SessionState,
+  ToastMessage,
+  WorkspaceLayoutRequest
+} from '../../shared/types'
+import {
+  WORKSPACE_MIN_EXPANDED_WIDTH,
+  WORKSPACE_NOTE_MIN_WIDTH,
+  WORKSPACE_PROVIDER_MIN_WIDTH,
+  WORKSPACE_SPLIT_HANDLE_WIDTH,
+  defaultWorkspaceLayout
+} from '../../shared/workspace-layout'
 
 const emptyState: SessionState = {
   mode: 'list',
@@ -46,9 +80,13 @@ const sparkDateFormatter = new Intl.DateTimeFormat('en', {
   hour: '2-digit',
   minute: '2-digit'
 })
-
 type Section = 'spark' | 'library'
 type RunAction = (action: () => Promise<void>, options?: { reloadSparks?: boolean }) => Promise<void>
+
+interface EphemeralNoteState {
+  markdown: string
+  sources: CaptureSource[]
+}
 
 interface ProviderMeta {
   id: ProviderId
@@ -67,6 +105,11 @@ const providerColors: Record<ProviderId, { fg: string; bg: string; border: strin
   chatgpt: { fg: 'providerChatgptFg', bg: 'providerChatgptBg', border: 'providerChatgptBorder' },
   grok: { fg: 'providerGrokFg', bg: 'providerGrokBg', border: 'providerGrokBorder' }
 }
+const emptyNoteState: EphemeralNoteState = {
+  markdown: '',
+  sources: []
+}
+const ephemeralNoteTitle = 'Untitled note'
 
 export function App(): JSX.Element {
   if (!window.adit) {
@@ -178,11 +221,7 @@ function ElectronApp(): JSX.Element {
   )
 
   if (sessionState.mode !== 'list') {
-    return (
-      <Box minH="100vh" bg="bg" color="fg">
-        <SessionBar sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
-      </Box>
-    )
+    return <SessionWorkspace sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
   }
 
   return (
@@ -578,9 +617,166 @@ interface SessionBarProps {
   sessionState: SessionState
   runAction: RunAction
   setSessionState: (state: SessionState) => void
+  notePanelOpen: boolean
+  onToggleNotePanel: () => void
 }
 
-function SessionBar({ sessionState, runAction, setSessionState }: SessionBarProps): JSX.Element {
+interface SessionWorkspaceProps {
+  sessionState: SessionState
+  runAction: RunAction
+  setSessionState: (state: SessionState) => void
+}
+
+function SessionWorkspace({ sessionState, runAction, setSessionState }: SessionWorkspaceProps): JSX.Element {
+  const [layout, setLayout] = useState<WorkspaceLayoutRequest>(() => ({ ...defaultWorkspaceLayout }))
+  const [noteState, setNoteState] = useState<EphemeralNoteState>(() => ({ ...emptyNoteState }))
+  const [notePanelRequestedOpen, setNotePanelRequestedOpen] = useState(false)
+  const [notePanelRendered, setNotePanelRendered] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
+  const pendingSplitRatio = useRef<number | null>(null)
+  const splitFrame = useRef<number | null>(null)
+  const noteLayoutOpen = layout.secondarySurface === 'note'
+  const secondaryCollapsed = noteLayoutOpen && viewportWidth < WORKSPACE_MIN_EXPANDED_WIDTH
+  const notePanelVisible = notePanelRendered && noteLayoutOpen && !secondaryCollapsed
+  const notePanelInteractive = notePanelVisible
+  const providerWidth =
+    noteLayoutOpen && !secondaryCollapsed ? calculateProviderPaneWidth(viewportWidth, layout.splitRatio) : viewportWidth
+  const effectiveLayout = useMemo<WorkspaceLayoutRequest>(
+    () => ({
+      ...layout,
+      secondaryCollapsed
+    }),
+    [layout, secondaryCollapsed]
+  )
+
+  useEffect(() => {
+    const updateWidth = (): void => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
+  useEffect(() => {
+    void window.adit.setWorkspaceLayout(effectiveLayout)
+  }, [effectiveLayout])
+
+  useEffect(
+    () => () => {
+      if (splitFrame.current !== null) {
+        window.cancelAnimationFrame(splitFrame.current)
+      }
+    },
+    []
+  )
+
+  const toggleNotePanel = useCallback(() => {
+    if (notePanelRequestedOpen) {
+      setNotePanelRequestedOpen(false)
+      setNotePanelRendered(false)
+      setLayout((current) => ({
+        ...current,
+        primarySurface: 'spark',
+        secondarySurface: null,
+        secondaryCollapsed: false
+      }))
+      return
+    }
+
+    setNotePanelRequestedOpen(true)
+    setNotePanelRendered(true)
+
+    setLayout((current) => ({
+      ...current,
+      primarySurface: 'spark',
+      secondarySurface: 'note',
+      secondaryCollapsed: false
+    }))
+  }, [notePanelRequestedOpen])
+
+  const queueSplitRatio = useCallback((splitRatio: number) => {
+    pendingSplitRatio.current = splitRatio
+
+    if (splitFrame.current !== null) {
+      return
+    }
+
+    splitFrame.current = window.requestAnimationFrame(() => {
+      splitFrame.current = null
+      const nextSplitRatio = pendingSplitRatio.current
+      pendingSplitRatio.current = null
+
+      if (nextSplitRatio !== null) {
+        setLayout((current) => ({
+          ...current,
+          splitRatio: nextSplitRatio
+        }))
+      }
+    })
+  }, [])
+
+  const startSplitDrag = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!notePanelInteractive) {
+        return
+      }
+
+      event.preventDefault()
+      event.currentTarget.setPointerCapture(event.pointerId)
+      const previousCursor = document.body.style.cursor
+      const previousUserSelect = document.body.style.userSelect
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      const handleGrabOffset = event.clientX - event.currentTarget.getBoundingClientRect().left
+
+      const updateSplit = (pointerEvent: PointerEvent): void => {
+        queueSplitRatio(calculateSplitRatioFromProviderEdge(pointerEvent.clientX - handleGrabOffset, window.innerWidth))
+      }
+      const stopSplit = (): void => {
+        document.body.style.cursor = previousCursor
+        document.body.style.userSelect = previousUserSelect
+        window.removeEventListener('pointermove', updateSplit)
+        window.removeEventListener('pointerup', stopSplit)
+        window.removeEventListener('pointercancel', stopSplit)
+      }
+
+      updateSplit(event.nativeEvent)
+      window.addEventListener('pointermove', updateSplit)
+      window.addEventListener('pointerup', stopSplit)
+      window.addEventListener('pointercancel', stopSplit)
+    },
+    [notePanelInteractive, queueSplitRatio]
+  )
+
+  return (
+    <Flex direction="column" h="100vh" bg="bg" color="fg" overflow="hidden">
+      <SessionBar
+        sessionState={sessionState}
+        runAction={runAction}
+        setSessionState={setSessionState}
+        notePanelOpen={notePanelRequestedOpen}
+        onToggleNotePanel={toggleNotePanel}
+      />
+      <Box flex="1" minH="0" overflow="hidden" position="relative">
+        {notePanelVisible ? (
+          <Flex h="full" minW="0">
+            <Box flex="0 0 auto" w={`${providerWidth}px`} />
+            <WorkspaceSplitHandle active={notePanelInteractive} onPointerDown={startSplitDrag} />
+            <EphemeralNotePanel active={notePanelInteractive} noteState={noteState} setNoteState={setNoteState} />
+          </Flex>
+        ) : (
+          <Box h="full" />
+        )}
+      </Box>
+    </Flex>
+  )
+}
+
+function SessionBar({
+  sessionState,
+  runAction,
+  setSessionState,
+  notePanelOpen,
+  onToggleNotePanel
+}: SessionBarProps): JSX.Element {
   const providerLabel = sessionState.provider ? providerLabels[sessionState.provider] : ''
   const backTooltip = sessionState.sessionUrl
     ? "Leaving this view won't interrupt the current reply."
@@ -598,34 +794,34 @@ function SessionBar({ sessionState, runAction, setSessionState }: SessionBarProp
       position="relative"
       zIndex="10"
     >
-      <Flex align="center" h="full" justify="flex-end" px="4" position="relative">
-        <Text
+      <Flex align="center" h="full" justify="space-between" pl="92px" pr="3" position="relative">
+        <HStack
           color="muted"
           fontSize="sm"
-          fontWeight="600"
+          gap="1"
           left="50%"
+          lineHeight="1"
           position="absolute"
           top="50%"
           transform="translate(-50%, -50%)"
+          whiteSpace="nowrap"
         >
-          Adit
-        </Text>
-        <HStack className="app-region-no-drag" gap="3">
-          <HStack color={sessionState.sessionUrl ? 'capturedFg' : 'waitingFg'} gap="1.5">
-            <Icon as={Circle} boxSize="2" fill="currentColor" />
-            <Text fontSize="xs" fontWeight="600">
-              {sessionState.sessionUrl ? 'Captured' : 'Waiting'}
-            </Text>
-          </HStack>
-          <Text color="muted" fontSize="xs" maxW="360px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-            {providerLabel}
+          <Text as="span" fontWeight="600">
+            Adit
           </Text>
-          <Tooltip.Root openDelay={350} closeDelay={100} positioning={{ placement: 'bottom-end' }}>
+          <Text as="span" color="faint" fontWeight="400">
+            — Speak, don’t type
+          </Text>
+        </HStack>
+        <HStack className="app-region-no-drag" gap="3">
+          <Tooltip.Root openDelay={350} closeDelay={100} positioning={{ placement: 'bottom-start' }}>
             <Tooltip.Trigger asChild>
               <Button
-                bg="accent"
+                bg="panelHeader"
+                borderColor="border"
                 borderRadius="9px"
-                color="accentOn"
+                borderWidth="1px"
+                color="fgSoft"
                 fontSize="xs"
                 fontWeight="600"
                 h="8"
@@ -633,7 +829,9 @@ function SessionBar({ sessionState, runAction, setSessionState }: SessionBarProp
                   void runAction(async () => setSessionState(await window.adit.closeSession()))
                 }}
                 px="3.5"
-                _hover={{ bg: 'accentHover' }}
+                variant="plain"
+                w="72px"
+                _hover={{ bg: 'track', color: 'fg' }}
               >
                 Back
               </Button>
@@ -645,8 +843,156 @@ function SessionBar({ sessionState, runAction, setSessionState }: SessionBarProp
             </Portal>
           </Tooltip.Root>
         </HStack>
+        <HStack className="app-region-no-drag" gap="3">
+          <HStack color={sessionState.sessionUrl ? 'capturedFg' : 'waitingFg'} gap="1.5">
+            <Icon as={Circle} boxSize="2" fill="currentColor" />
+            <Text fontSize="xs" fontWeight="600">
+              {sessionState.sessionUrl ? 'Captured' : 'Waiting'}
+            </Text>
+          </HStack>
+          <Text color="muted" fontSize="xs" maxW="360px" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+            {providerLabel}
+          </Text>
+          <Button
+            aria-pressed={notePanelOpen}
+            bg="accent"
+            borderRadius="9px"
+            color="accentOn"
+            fontSize="xs"
+            fontWeight="600"
+            h="8"
+            onClick={onToggleNotePanel}
+            px="3"
+            w="72px"
+            _hover={{ bg: 'accentHover' }}
+          >
+            Note
+          </Button>
+        </HStack>
       </Flex>
     </Box>
+  )
+}
+
+interface WorkspaceSplitHandleProps {
+  active: boolean
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void
+}
+
+function WorkspaceSplitHandle({ active, onPointerDown }: WorkspaceSplitHandleProps): JSX.Element {
+  return (
+    <Box
+      aria-label="Resize note panel"
+      alignItems="center"
+      cursor="col-resize"
+      display="flex"
+      flex="0 0 auto"
+      justifyContent="center"
+      opacity={active ? '1' : '0'}
+      pointerEvents={active ? 'auto' : 'none'}
+      position="relative"
+      role="separator"
+      w={`${WORKSPACE_SPLIT_HANDLE_WIDTH}px`}
+      zIndex="1"
+      onPointerDown={onPointerDown}
+      _hover={{ '& > [data-split-grip]': { bg: 'accent' } }}
+    >
+      <Box bg="cardBg" inset="0" position="absolute" />
+      <Box
+        bg="panelHeader"
+        borderBottomColor="border"
+        borderBottomWidth="1px"
+        h="10"
+        left="0"
+        position="absolute"
+        right="0"
+        top="0"
+      />
+      <Box
+        data-split-grip
+        bg="accent"
+        borderRadius="full"
+        h="52px"
+        left="50%"
+        position="absolute"
+        top="50%"
+        transition="background-color 160ms ease, transform 160ms ease"
+        transform="translate(-50%, -50%)"
+        w="2px"
+      />
+    </Box>
+  )
+}
+
+interface EphemeralNotePanelProps {
+  active: boolean
+  noteState: EphemeralNoteState
+  setNoteState: Dispatch<SetStateAction<EphemeralNoteState>>
+}
+
+function EphemeralNotePanel({ active, noteState, setNoteState }: EphemeralNotePanelProps): JSX.Element {
+  const editorRef = useRef<MDXEditorMethods>(null)
+  const editorPlugins = useMemo(
+    () => [
+      headingsPlugin(),
+      listsPlugin(),
+      quotePlugin(),
+      linkPlugin(),
+      codeBlockPlugin(),
+      thematicBreakPlugin(),
+      markdownShortcutPlugin()
+    ],
+    []
+  )
+
+  return (
+    <Flex
+      as="aside"
+      bg="cardBg"
+      direction="column"
+      flex="1"
+      minW={`${WORKSPACE_NOTE_MIN_WIDTH}px`}
+      overflow="hidden"
+      pointerEvents={active ? 'auto' : 'none'}
+    >
+      <Box
+        bg="panelHeader"
+        borderBottomColor="border"
+        borderBottomWidth="1px"
+        flexShrink="0"
+        h="10"
+        position="relative"
+      >
+        <Text
+          color="muted"
+          fontSize="xs"
+          fontWeight="600"
+          left="50%"
+          lineHeight="1"
+          position="absolute"
+          top="50%"
+          transform="translate(-50%, -50%)"
+          whiteSpace="nowrap"
+        >
+          {ephemeralNoteTitle}
+        </Text>
+      </Box>
+      <Box className="adit-mdx-shell" flex="1" minH="0" overflow="hidden">
+        <MDXEditor
+          ref={editorRef}
+          className="adit-mdx-editor"
+          contentEditableClassName="adit-mdx-content"
+          markdown={noteState.markdown}
+          plugins={editorPlugins}
+          onChange={(markdown) =>
+            setNoteState((current) => ({
+              ...current,
+              markdown
+            }))
+          }
+        />
+      </Box>
+    </Flex>
   )
 }
 
@@ -999,4 +1345,15 @@ function formatSessionHost(sessionUrl: string | null): string {
   } catch {
     return ''
   }
+}
+
+function calculateProviderPaneWidth(contentWidth: number, splitRatio: number): number {
+  const maxProviderWidth = contentWidth - WORKSPACE_NOTE_MIN_WIDTH - WORKSPACE_SPLIT_HANDLE_WIDTH
+  return Math.min(maxProviderWidth, Math.max(WORKSPACE_PROVIDER_MIN_WIDTH, Math.round(contentWidth * splitRatio)))
+}
+
+function calculateSplitRatioFromProviderEdge(providerEdgeX: number, contentWidth: number): number {
+  const minRatio = WORKSPACE_PROVIDER_MIN_WIDTH / contentWidth
+  const maxRatio = (contentWidth - WORKSPACE_NOTE_MIN_WIDTH - WORKSPACE_SPLIT_HANDLE_WIDTH) / contentWidth
+  return Math.min(maxRatio, Math.max(minRatio, providerEdgeX / contentWidth))
 }

@@ -37,6 +37,15 @@ export interface OpenSessionRequest {
 }
 
 export type SessionMode = 'list' | 'creating' | 'active_ephemeral' | 'active_saved' | 'closing'
+export type PrimarySurface = 'spark' | 'note'
+export type SecondarySurface = 'note' | 'spark' | null
+
+export interface WorkspaceLayoutRequest {
+  primarySurface: PrimarySurface
+  secondarySurface: SecondarySurface
+  secondaryCollapsed: boolean
+  splitRatio: number
+}
 
 export interface SessionState {
   mode: SessionMode

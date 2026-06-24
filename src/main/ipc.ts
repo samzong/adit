@@ -6,7 +6,8 @@ import type {
   CreateSessionRequest,
   SparkListRequest,
   OpenSessionRequest,
-  RenameSparkRequest
+  RenameSparkRequest,
+  WorkspaceLayoutRequest
 } from '../shared/types'
 import type { SparkStore } from './db/sparks'
 import { isProviderId } from './providers'
@@ -51,6 +52,9 @@ export function registerIpc(store: SparkStore, sessions: SessionController): voi
   ipcMain.handle(IPC.sessionClose, () => sessions.close())
   ipcMain.handle(IPC.sessionState, () => sessions.getState())
   ipcMain.handle(IPC.sessionReadSelection, () => sessions.readSelection())
+  ipcMain.handle(IPC.workspaceLayoutSet, (_event, request: WorkspaceLayoutRequest) =>
+    sessions.setWorkspaceLayout(request)
+  )
 }
 
 function sanitizeSparkListRequest(request: SparkListRequest): SparkListRequest {
