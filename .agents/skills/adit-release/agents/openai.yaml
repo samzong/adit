@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adit Release"
+  short_description: "Release Adit unsigned macOS builds"
+  default_prompt: "Use $adit-release to publish the next Adit version."

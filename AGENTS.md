@@ -6,7 +6,21 @@ Project-local rules for Adit. These rules supplement the shared global agent ins
 
 ## Product Boundary
 
-Adit is a macOS Electron shell for local conversation entrances. It stores and resumes provider conversation URLs. It does not collect provider message bodies, summarize conversations, export transcripts, or automate provider actions.
+Adit is a quiet macOS app for AI-native notes. It is not another chat app, a transcript archive, a provider replacement, or a bloated knowledge base before the basics work.
+
+Adit's core habit is: start or resume a provider conversation, work with the strongest model available, then keep only what matters on the user's Mac. Talking to the provider is the default work mode; typing is a fallback.
+
+Use these product terms consistently:
+
+- `Spark` is the product name for a provider conversation entry point. It is the draft doorway and live work site, not the finished note.
+- `Library` is the user's local AI note asset collection. It contains user-selected summaries, documents, images, code, files, or other provider outputs worth keeping.
+- Provider conversations are where things get made. Library items are what the user owns afterward.
+
+Adit may store and resume provider conversation URLs. It may also save provider outputs into Library only when the user explicitly chooses what to keep.
+
+Adit must not default to collecting complete provider message bodies, mirroring provider history, summarizing conversations without user choice, exporting full transcripts, reading chats without asking, or automating provider actions such as clicking provider controls or sending messages.
+
+The product value is not chatting on behalf of the provider. The value is turning selected provider results into local notes the user can later view, analyze, and reuse without reopening the original conversation.
 
 Before UI work, read `docs/DESIGN.md`; if code and docs disagree, verify the live code and keep the implementation minimal.
 
