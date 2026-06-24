@@ -8,12 +8,22 @@ importers:
 
   .:
     dependencies:
+      better-sqlite3:
+        specifier: ^12.11.1
+        version: 12.11.1
+      electron-log:
+        specifier: ^5.3.4
+        version: 5.4.4
+    devDependencies:
       '@chakra-ui/react':
         specifier: ^3.36.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@18.3.31)(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@18.3.31)(react@18.3.1)
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.4
       '@fontsource-variable/bricolage-grotesque':
         specifier: ^5.2.10
         version: 5.2.10
@@ -23,28 +33,6 @@ importers:
       '@fontsource/spline-sans-mono':
         specifier: ^5.2.8
         version: 5.2.8
-      better-sqlite3:
-        specifier: ^12.11.1
-        version: 12.11.1
-      electron-log:
-        specifier: ^5.3.4
-        version: 5.4.4
-      lucide-react:
-        specifier: ^1.21.0
-        version: 1.21.0(react@18.3.1)
-      next-themes:
-        specifier: ^0.4.6
-        version: 0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-    devDependencies:
-      '@eslint/js':
-        specifier: ^9.18.0
-        version: 9.39.4
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -81,9 +69,21 @@ importers:
       globals:
         specifier: ^15.14.0
         version: 15.15.0
+      lucide-react:
+        specifier: ^1.21.0
+        version: 1.21.0(react@18.3.1)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: ^3.4.2
         version: 3.8.4
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
