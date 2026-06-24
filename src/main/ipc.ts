@@ -50,6 +50,7 @@ export function registerIpc(store: NoteStore, sessions: SessionController): void
 
   ipcMain.handle(IPC.sessionClose, () => sessions.close())
   ipcMain.handle(IPC.sessionState, () => sessions.getState())
+  ipcMain.handle(IPC.sessionReadSelection, () => sessions.readSelection())
 }
 
 function sanitizeListRequest(request: NotesListRequest): NotesListRequest {
