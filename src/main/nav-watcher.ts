@@ -6,6 +6,8 @@ export interface NavWatcherHandlers {
   onSessionUrl: (sessionUrl: string) => void
   onLoginRequired: () => void
   onBlockedNavigation: (url: string) => void
+  onFullNavigationStart?: () => void
+  onSameDocumentNavigation?: () => void
 }
 
 export function watchNavigation(
@@ -26,7 +28,23 @@ export function watchNavigation(
   }
 
   const didNavigate = (_event: Electron.Event, url: string): void => inspectUrl(url)
-  const didNavigateInPage = (_event: Electron.Event, url: string): void => inspectUrl(url)
+  const didNavigateInPage = (_event: Electron.Event, url: string): void => {
+    inspectUrl(url)
+    handlers.onSameDocumentNavigation?.()
+  }
+  const didStartNavigation = (
+    event: Electron.Event & { isMainFrame?: boolean; isSameDocument?: boolean },
+    _url: string,
+    isSameDocument: boolean,
+    isMainFrame: boolean
+  ): void => {
+    const mainFrame = event.isMainFrame ?? isMainFrame
+    const sameDocument = event.isSameDocument ?? isSameDocument
+
+    if (mainFrame && !sameDocument) {
+      handlers.onFullNavigationStart?.()
+    }
+  }
   const willNavigate = (event: Electron.Event, url: string): void => {
     if (!isAllowedProviderUrl(provider, url)) {
       event.preventDefault()
@@ -34,11 +52,13 @@ export function watchNavigation(
     }
   }
 
+  webContents.on('did-start-navigation', didStartNavigation)
   webContents.on('did-navigate', didNavigate)
   webContents.on('did-navigate-in-page', didNavigateInPage)
   webContents.on('will-navigate', willNavigate)
 
   return () => {
+    webContents.off('did-start-navigation', didStartNavigation)
     webContents.off('did-navigate', didNavigate)
     webContents.off('did-navigate-in-page', didNavigateInPage)
     webContents.off('will-navigate', willNavigate)

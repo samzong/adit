@@ -18,7 +18,10 @@ vi.mock('./session-view', () => ({
 vi.mock('./session-bridge', () => ({
   SessionBridge: vi.fn().mockImplementation(() => ({
     attach: vi.fn(),
-    detach: vi.fn()
+    detach: vi.fn(),
+    onFullNavigation: vi.fn(),
+    onRenderProcessGone: vi.fn(),
+    onSameDocumentNavigation: vi.fn()
   }))
 }))
 

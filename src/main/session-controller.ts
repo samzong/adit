@@ -228,8 +228,10 @@ export class SessionController {
         }
       }
     }
+    const onRenderProcessGone = (): void => this.bridge.onRenderProcessGone()
 
     active.view.webContents.on('page-title-updated', onTitleUpdated)
+    active.view.webContents.on('render-process-gone', onRenderProcessGone)
     const unwatch = watchNavigation(active.view.webContents, active.provider, {
       onSessionUrl: (sessionUrl) => this.captureSessionUrl(active, sessionUrl),
       onLoginRequired: () => {
@@ -244,11 +246,14 @@ export class SessionController {
           level: 'error',
           message: `Blocked navigation outside the provider allowlist: ${url}`
         })
-      }
+      },
+      onFullNavigationStart: () => this.bridge.onFullNavigation(),
+      onSameDocumentNavigation: () => this.bridge.onSameDocumentNavigation()
     })
 
     return () => {
       active.view.webContents.off('page-title-updated', onTitleUpdated)
+      active.view.webContents.off('render-process-gone', onRenderProcessGone)
       unwatch()
     }
   }
