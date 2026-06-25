@@ -12,3 +12,5 @@ onlyBuiltDependencies:
   - electron
   - electron-winstaller
   - esbuild
+
+engineStrict: true
