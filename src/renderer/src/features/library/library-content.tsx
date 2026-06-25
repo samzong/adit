@@ -38,7 +38,7 @@ export function LibraryContent({
   if (items.length === 0) {
     return (
       <AditEmptyState
-        description="Save the AI results worth keeping. Documents, images, files, and code will appear here as Library items."
+        description="Save the AI results worth keeping. Markdown documents will appear here as Library items."
         icon={<Folder />}
         title="No Library items yet"
       />

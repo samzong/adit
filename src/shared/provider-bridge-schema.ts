@@ -14,15 +14,9 @@ import {
 
 const providerBridgeErrorCodes = new Set<ProviderBridgeErrorCode>([
   'adapter_unavailable',
-  'capability_unavailable',
   'connection_stale',
   'route_stale',
   'target_not_found',
-  'selection_empty',
-  'selection_out_of_scope',
-  'payload_too_large',
-  'write_failed',
-  'verification_failed',
   'timeout',
   'unknown'
 ])
@@ -64,7 +58,7 @@ export function isProviderCommand(value: unknown): value is ProviderCommand {
     return false
   }
 
-  if (value.type === 'refreshCapabilities' || value.type === 'readSelection') {
+  if (value.type === 'refreshCapabilities') {
     return true
   }
 
@@ -92,10 +86,6 @@ function isProviderResultValue(value: unknown): value is ProviderResultValue {
 
   if (value.kind === 'capabilities') {
     return isProviderCapabilities(value.capabilities)
-  }
-
-  if (value.kind === 'selection') {
-    return value.selection === null || isAdapterCapturedSelection(value.selection)
   }
 
   return value.kind === 'void'

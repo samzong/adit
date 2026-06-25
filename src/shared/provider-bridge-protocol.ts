@@ -15,15 +15,9 @@ export interface ProviderCapabilities {
 
 export type ProviderBridgeErrorCode =
   | 'adapter_unavailable'
-  | 'capability_unavailable'
   | 'connection_stale'
   | 'route_stale'
   | 'target_not_found'
-  | 'selection_empty'
-  | 'selection_out_of_scope'
-  | 'payload_too_large'
-  | 'write_failed'
-  | 'verification_failed'
   | 'timeout'
   | 'unknown'
 
@@ -43,27 +37,19 @@ export interface RefreshCapabilitiesCommand extends BridgeEnvelope {
   requestId: string
 }
 
-export interface ReadSelectionCommand extends BridgeEnvelope {
-  type: 'readSelection'
-  requestId: string
-}
-
 export interface SetSelectionActionAvailabilityCommand extends BridgeEnvelope {
   type: 'setSelectionActionAvailability'
   requestId: string
   enabled: boolean
 }
 
-export type ProviderCommand = RefreshCapabilitiesCommand | ReadSelectionCommand | SetSelectionActionAvailabilityCommand
+export type ProviderCommand = RefreshCapabilitiesCommand | SetSelectionActionAvailabilityCommand
 
 export interface AdapterCapturedSelection {
   text: string
 }
 
-export type ProviderResultValue =
-  | { kind: 'capabilities'; capabilities: ProviderCapabilities }
-  | { kind: 'selection'; selection: AdapterCapturedSelection | null }
-  | { kind: 'void' }
+export type ProviderResultValue = { kind: 'capabilities'; capabilities: ProviderCapabilities } | { kind: 'void' }
 
 export type ProviderResult =
   | {

@@ -14,7 +14,6 @@ import type {
   OpenSessionRequest,
   RenameSparkRequest,
   SetSessionSelectionActionAvailabilityRequest,
-  SessionSelectionResult,
   SessionState,
   ToastMessage,
   UpdateLibraryItemContentRequest,
@@ -45,7 +44,6 @@ declare global {
       openSession: (request: OpenSessionRequest) => Promise<SessionState>
       closeSession: () => Promise<SessionState>
       getSessionState: () => Promise<SessionState>
-      sessionReadSelection: () => Promise<SessionSelectionResult>
       setSessionSelectionActionAvailability: (request: SetSessionSelectionActionAvailabilityRequest) => Promise<void>
       setWorkspaceLayout: (request: WorkspaceLayoutRequest) => Promise<void>
       onSparksChanged: (handler: () => void) => Unsubscribe

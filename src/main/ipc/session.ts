@@ -26,7 +26,6 @@ export function registerSessionIpc(sessions: SessionController): void {
 
   ipcMain.handle(IPC.sessionClose, () => sessions.close())
   ipcMain.handle(IPC.sessionState, () => sessions.getState())
-  ipcMain.handle(IPC.sessionReadSelection, () => sessions.readSelection())
   ipcMain.handle(
     IPC.sessionSelectionActionAvailabilitySet,
     (_event, request: SetSessionSelectionActionAvailabilityRequest) => {

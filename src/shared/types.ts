@@ -1,5 +1,3 @@
-import type { AdapterCapturedSelection, ProviderBridgeErrorCode } from './provider-bridge-protocol'
-
 export type ProviderId = 'chatgpt' | 'grok'
 
 export interface SparkRow {
@@ -19,10 +17,9 @@ export interface SparkListRequest {
   query?: string
 }
 
-export type LibraryItemKind = 'markdown_doc' | 'image_asset' | 'file_asset' | 'code_asset' | 'web_capture'
-export type LibraryContentFormat = 'markdown' | 'plain_text' | 'html' | 'code' | 'image' | 'file'
-export type LibraryContentRole = 'primary' | 'body' | 'preview' | 'source_snapshot'
-export type LibraryAttachmentRole = 'primary' | 'inline' | 'source' | 'export'
+export type LibraryItemKind = 'markdown_doc'
+export type LibraryContentFormat = 'markdown'
+export type LibraryContentRole = 'primary'
 
 export interface LibraryItemRow {
   id: string
@@ -42,27 +39,9 @@ export interface LibraryItemContentRow {
   role: LibraryContentRole
   format: LibraryContentFormat
   body_text: string | null
-  attachment_id: string | null
-  language: string | null
   sort_order: number
-  metadata_json: string | null
   created_at: number
   updated_at: number
-}
-
-export interface LibraryAttachmentRow {
-  id: string
-  item_id: string
-  role: LibraryAttachmentRole
-  file_path: string
-  original_name: string | null
-  mime_type: string | null
-  byte_size: number | null
-  sha256: string | null
-  width: number | null
-  height: number | null
-  created_at: number
-  metadata_json: string | null
 }
 
 export interface LibraryItemSourceRow {
@@ -79,14 +58,12 @@ export interface LibraryItemSourceRow {
 export interface LibraryItemDetail {
   item: LibraryItemRow
   contents: LibraryItemContentRow[]
-  attachments: LibraryAttachmentRow[]
   sources: LibraryItemSourceRow[]
 }
 
 export interface LibraryListRequest {
   archived?: boolean
   query?: string
-  kind?: LibraryItemKind | 'all'
 }
 
 export interface GetLibraryItemRequest {
@@ -151,13 +128,10 @@ export interface SetSessionSelectionActionAvailabilityRequest {
 }
 
 export type SessionMode = 'list' | 'creating' | 'active_ephemeral' | 'active_saved' | 'closing'
-export type PrimarySurface = 'spark' | 'note'
-export type SecondarySurface = 'note' | 'spark' | null
 
 export interface WorkspaceLayoutRequest {
-  primarySurface: PrimarySurface
-  secondarySurface: SecondarySurface
-  secondaryCollapsed: boolean
+  noteOpen: boolean
+  noteCollapsed: boolean
   splitRatio: number
 }
 
@@ -167,23 +141,6 @@ export interface SessionState {
   sparkId: string | null
   sessionUrl: string | null
   title: string | null
-}
-
-export interface CaptureSource {
-  provider: ProviderId
-  url: string
-  title: string | null
-  capturedAt: number
-}
-
-export interface SessionSelectionResult {
-  selection: AdapterCapturedSelection | null
-  source: CaptureSource
-}
-
-export interface SessionSelectionError {
-  code: ProviderBridgeErrorCode
-  message?: string
 }
 
 export type ToastLevel = 'info' | 'error'

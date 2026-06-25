@@ -51,9 +51,11 @@ describe('isProviderBridgeHello', () => {
 describe('provider bridge command/result/event schemas', () => {
   const envelope = { connectionId: 'conn-1', routeRevision: 0 }
 
-  it('accepts refreshCapabilities commands', () => {
+  it('accepts provider commands', () => {
     expect(isProviderCommand({ type: 'refreshCapabilities', requestId: 'req-1', ...envelope })).toBe(true)
-    expect(isProviderCommand({ type: 'readSelection', requestId: 'req-2', ...envelope })).toBe(true)
+    expect(
+      isProviderCommand({ type: 'setSelectionActionAvailability', requestId: 'req-2', enabled: true, ...envelope })
+    ).toBe(true)
   })
 
   it('rejects commands without valid envelope fields', () => {
@@ -86,39 +88,9 @@ describe('provider bridge command/result/event schemas', () => {
     ).toBe(true)
   })
 
-  it('accepts selection results', () => {
-    expect(
-      isProviderResult({
-        type: 'result',
-        requestId: 'req-1',
-        ...envelope,
-        ok: true,
-        value: { kind: 'selection', selection: { text: 'hello' } }
-      })
-    ).toBe(true)
-    expect(
-      isProviderResult({
-        type: 'result',
-        requestId: 'req-1',
-        ...envelope,
-        ok: true,
-        value: { kind: 'selection', selection: null }
-      })
-    ).toBe(true)
-  })
-
   it('rejects oversized selection payloads', () => {
     expect(isAdapterCapturedSelection({ text: 'a'.repeat(MAX_SELECTION_BYTES) })).toBe(true)
     expect(isAdapterCapturedSelection({ text: 'a'.repeat(MAX_SELECTION_BYTES + 1) })).toBe(false)
-    expect(
-      isProviderResult({
-        type: 'result',
-        requestId: 'req-1',
-        ...envelope,
-        ok: true,
-        value: { kind: 'selection', selection: { text: 'a'.repeat(MAX_SELECTION_BYTES + 1) } }
-      })
-    ).toBe(false)
   })
 
   it('rejects array capability payloads', () => {

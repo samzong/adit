@@ -130,11 +130,6 @@ function pendingCount(bridge: SessionBridge): number {
   return (bridge as unknown as { pending: Map<string, unknown> }).pending.size
 }
 
-async function flushMicrotasks(): Promise<void> {
-  await Promise.resolve()
-  await Promise.resolve()
-}
-
 function resolveCapabilities(capabilities: ProviderCapabilities = { readSelection: true }): void {
   const command = latestCommand()
   portMessageHandler?.({
@@ -147,13 +142,6 @@ function resolveCapabilities(capabilities: ProviderCapabilities = { readSelectio
       value: { kind: 'capabilities', capabilities }
     }
   })
-}
-
-const captureSource = {
-  provider: 'chatgpt' as const,
-  url: 'https://chatgpt.com/c/abc',
-  title: 'A provider title',
-  capturedAt: 123
 }
 
 describe('SessionBridge', () => {
@@ -335,132 +323,6 @@ describe('SessionBridge', () => {
     } finally {
       vi.useRealTimers()
     }
-  })
-
-  it('reads selection and returns main-owned source metadata', async () => {
-    const bridge = connectChatGptBridge()
-    resolveCapabilities()
-    portPostMessage.mockClear()
-
-    const resultPromise = bridge.readSelection(captureSource)
-    await flushMicrotasks()
-
-    const command = latestCommand()
-    expect(command).toMatchObject({
-      type: 'readSelection',
-      connectionId: 'uuid-1',
-      routeRevision: 0
-    })
-    portMessageHandler?.({
-      data: {
-        type: 'result',
-        requestId: command.requestId,
-        connectionId: command.connectionId,
-        routeRevision: command.routeRevision,
-        ok: true,
-        value: {
-          kind: 'selection',
-          selection: { text: 'selected text' },
-          source: { provider: 'evil', url: 'https://evil.com' }
-        }
-      }
-    })
-
-    await expect(resultPromise).resolves.toEqual({
-      selection: { text: 'selected text' },
-      source: captureSource
-    })
-  })
-
-  it('returns null for an empty provider selection', async () => {
-    const bridge = connectChatGptBridge()
-    resolveCapabilities()
-    portPostMessage.mockClear()
-
-    const resultPromise = bridge.readSelection(captureSource)
-    await Promise.resolve()
-
-    const command = latestCommand()
-    portMessageHandler?.({
-      data: {
-        type: 'result',
-        requestId: command.requestId,
-        connectionId: command.connectionId,
-        routeRevision: command.routeRevision,
-        ok: true,
-        value: { kind: 'selection', selection: null }
-      }
-    })
-
-    await expect(resultPromise).resolves.toEqual({
-      selection: null,
-      source: captureSource
-    })
-  })
-
-  it('refreshes stale empty capabilities before reading selection', async () => {
-    const bridge = connectChatGptBridge()
-    resolveCapabilities({})
-    portPostMessage.mockClear()
-
-    const resultPromise = bridge.readSelection(captureSource)
-    await Promise.resolve()
-
-    let command = latestCommand()
-    expect(command.type).toBe('refreshCapabilities')
-    portMessageHandler?.({
-      data: {
-        type: 'result',
-        requestId: command.requestId,
-        connectionId: command.connectionId,
-        routeRevision: command.routeRevision,
-        ok: true,
-        value: { kind: 'capabilities', capabilities: { readSelection: true } }
-      }
-    })
-    await flushMicrotasks()
-
-    command = latestCommand()
-    expect(command.type).toBe('readSelection')
-    portMessageHandler?.({
-      data: {
-        type: 'result',
-        requestId: command.requestId,
-        connectionId: command.connectionId,
-        routeRevision: command.routeRevision,
-        ok: true,
-        value: { kind: 'selection', selection: { text: 'selected after refresh' } }
-      }
-    })
-
-    await expect(resultPromise).resolves.toEqual({
-      selection: { text: 'selected after refresh' },
-      source: captureSource
-    })
-  })
-
-  it('rejects readSelection when the capability is unavailable after refresh', async () => {
-    const bridge = connectChatGptBridge()
-    resolveCapabilities({})
-    portPostMessage.mockClear()
-
-    const resultPromise = bridge.readSelection(captureSource)
-    await flushMicrotasks()
-
-    const command = latestCommand()
-    expect(command.type).toBe('refreshCapabilities')
-    portMessageHandler?.({
-      data: {
-        type: 'result',
-        requestId: command.requestId,
-        connectionId: command.connectionId,
-        routeRevision: command.routeRevision,
-        ok: true,
-        value: { kind: 'capabilities', capabilities: {} }
-      }
-    })
-
-    await expect(resultPromise).rejects.toMatchObject({ code: 'capability_unavailable' })
   })
 
   it('detach closes an existing connection and clears context', () => {

@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
 import type { WorkspaceLayoutRequest } from '../shared/types'
 import {
+  WORKSPACE_MIN_EXPANDED_WIDTH,
   WORKSPACE_NOTE_MIN_WIDTH,
   WORKSPACE_PROVIDER_MIN_WIDTH,
   WORKSPACE_SPLIT_HANDLE_WIDTH
@@ -90,40 +91,17 @@ function providerWebPreferences(provider: ProviderConfig): WebPreferences {
 }
 
 function calculateProviderBounds(contentWidth: number, layout: WorkspaceLayoutRequest): { x: number; width: number } {
-  if (!layout.secondarySurface || layout.secondaryCollapsed || contentWidth < requiredExpandedWidth(layout)) {
-    if (layout.primarySurface === 'spark') {
-      return { x: 0, width: contentWidth }
-    }
-
-    return layout.secondarySurface === 'spark' ? { x: contentWidth, width: 0 } : { x: 0, width: contentWidth }
+  if (!layout.noteOpen || layout.noteCollapsed || contentWidth < WORKSPACE_MIN_EXPANDED_WIDTH) {
+    return { x: 0, width: contentWidth }
   }
 
-  const primaryMinWidth = layout.primarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
-  const secondaryMinWidth =
-    layout.secondarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
-  const maxPrimaryWidth = contentWidth - secondaryMinWidth - WORKSPACE_SPLIT_HANDLE_WIDTH
-  const primaryWidth = Math.min(
-    maxPrimaryWidth,
-    Math.max(primaryMinWidth, Math.round(contentWidth * layout.splitRatio))
+  const maxProviderWidth = contentWidth - WORKSPACE_NOTE_MIN_WIDTH - WORKSPACE_SPLIT_HANDLE_WIDTH
+  const providerWidth = Math.min(
+    maxProviderWidth,
+    Math.max(WORKSPACE_PROVIDER_MIN_WIDTH, Math.round(contentWidth * layout.splitRatio))
   )
 
-  if (layout.primarySurface === 'spark') {
-    return { x: 0, width: primaryWidth }
-  }
-
-  if (layout.secondarySurface === 'spark') {
-    const width = contentWidth - primaryWidth - WORKSPACE_SPLIT_HANDLE_WIDTH
-    return { x: primaryWidth + WORKSPACE_SPLIT_HANDLE_WIDTH, width }
-  }
-
-  return { x: 0, width: contentWidth }
-}
-
-function requiredExpandedWidth(layout: WorkspaceLayoutRequest): number {
-  const primaryMinWidth = layout.primarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
-  const secondaryMinWidth =
-    layout.secondarySurface === 'spark' ? WORKSPACE_PROVIDER_MIN_WIDTH : WORKSPACE_NOTE_MIN_WIDTH
-  return primaryMinWidth + secondaryMinWidth + WORKSPACE_SPLIT_HANDLE_WIDTH
+  return { x: 0, width: providerWidth }
 }
 
 function configurePartition(provider: ProviderConfig): void {

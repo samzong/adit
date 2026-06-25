@@ -1,26 +1,14 @@
-import { Box, Button, Flex, HStack, Icon, Input, Text } from '@chakra-ui/react'
+import { Box, Flex, HStack, Icon, Input, Text } from '@chakra-ui/react'
 import { Plus, Search } from 'lucide-react'
-import type { LibraryKindFilter } from '../../app/types'
-
-const libraryKindFilters: Array<{ value: LibraryKindFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'markdown_doc', label: 'Documents' },
-  { value: 'image_asset', label: 'Images' },
-  { value: 'file_asset', label: 'Files' }
-]
 
 export function LibraryToolbar({
   busy,
-  kind,
   query,
-  setKind,
   setQuery,
   onCreateItem
 }: {
   busy: boolean
-  kind: LibraryKindFilter
   query: string
-  setKind: (kind: LibraryKindFilter) => void
   setQuery: (value: string) => void
   onCreateItem: () => void
 }): JSX.Element {
@@ -65,32 +53,6 @@ export function LibraryToolbar({
       </Box>
 
       <HStack gap="2.5">
-        <HStack bg="track" borderColor="trackBorder" borderRadius="9px" borderWidth="1px" gap="1" h="38px" p="1">
-          {libraryKindFilters.map((filter) => {
-            const active = kind === filter.value
-            return (
-              <Button
-                key={filter.value}
-                bg={active ? 'trackActive' : 'transparent'}
-                borderColor={active ? 'border' : 'transparent'}
-                borderRadius="7px"
-                borderWidth="1px"
-                color={active ? 'fg' : 'muted'}
-                fontSize="12px"
-                fontWeight="700"
-                h="28px"
-                minW="auto"
-                onClick={() => setKind(filter.value)}
-                px="2.5"
-                shadow={active ? 'trackActive' : 'none'}
-                variant="plain"
-                _hover={{ color: active ? 'fg' : 'fgSoft' }}
-              >
-                {filter.label}
-              </Button>
-            )
-          })}
-        </HStack>
         <Flex
           align="stretch"
           h="38px"
