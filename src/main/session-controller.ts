@@ -1,14 +1,7 @@
 import type { BrowserWindow, WebContentsView } from 'electron'
 import log from 'electron-log/main'
 import { IPC } from '../shared/ipc'
-import type {
-  CaptureSource,
-  SparkRow,
-  ProviderId,
-  SessionSelectionResult,
-  SessionState,
-  WorkspaceLayoutRequest
-} from '../shared/types'
+import type { SparkRow, ProviderId, SessionState, WorkspaceLayoutRequest } from '../shared/types'
 import { clampWorkspaceSplitRatio, defaultWorkspaceLayout } from '../shared/workspace-layout'
 import type { SparkStore } from './db/sparks'
 import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './providers'
@@ -171,15 +164,6 @@ export class SessionController {
       sessionUrl: this.active.sessionUrl,
       title: this.active.title
     }
-  }
-
-  readSelection(): Promise<SessionSelectionResult> {
-    const active = this.active
-    if (!active) {
-      throw new Error('No active provider session')
-    }
-
-    return this.bridge.readSelection(createCaptureSource(active))
   }
 
   private clearActive(active: ActiveSession): void {
@@ -354,9 +338,7 @@ export class SessionController {
 
   private syncSelectionActionAvailability(): void {
     this.bridge.setSelectionActionEnabled(
-      this.selectionActionRequested &&
-        this.workspaceLayout.secondarySurface === 'note' &&
-        !this.workspaceLayout.secondaryCollapsed
+      this.selectionActionRequested && this.workspaceLayout.noteOpen && !this.workspaceLayout.noteCollapsed
     )
   }
 }
@@ -370,25 +352,9 @@ function formatError(reason: unknown): string {
 }
 
 function sanitizeWorkspaceLayout(request: Partial<WorkspaceLayoutRequest> | null | undefined): WorkspaceLayoutRequest {
-  const primarySurface = request?.primarySurface === 'note' ? 'note' : 'spark'
-  const secondarySurface =
-    request?.secondarySurface === 'note' || request?.secondarySurface === 'spark' ? request.secondarySurface : null
-
   return {
-    primarySurface,
-    secondarySurface,
-    secondaryCollapsed: Boolean(request?.secondaryCollapsed),
+    noteOpen: request?.noteOpen === true,
+    noteCollapsed: Boolean(request?.noteCollapsed),
     splitRatio: clampWorkspaceSplitRatio(Number(request?.splitRatio))
-  }
-}
-
-function createCaptureSource(active: ActiveSession): CaptureSource {
-  const title = active.view.webContents.getTitle()
-
-  return {
-    provider: active.provider.id,
-    url: active.view.webContents.mainFrame.url,
-    title: title === '' ? null : title,
-    capturedAt: Date.now()
   }
 }

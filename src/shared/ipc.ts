@@ -18,7 +18,6 @@ export const IPC = {
   sessionOpen: 'session:open',
   sessionClose: 'session:close',
   sessionState: 'session:state',
-  sessionReadSelection: 'session:read-selection',
   sessionInsertSelectionRequested: 'session:insert-selection-requested',
   sessionSelectionActionAvailabilitySet: 'session:selection-action-availability-set',
   workspaceLayoutSet: 'workspace:layout-set',

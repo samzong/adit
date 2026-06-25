@@ -16,7 +16,6 @@ import type {
   OpenSessionRequest,
   RenameSparkRequest,
   SetSessionSelectionActionAvailabilityRequest,
-  SessionSelectionResult,
   SessionState,
   ToastMessage,
   UpdateLibraryItemContentRequest,
@@ -61,7 +60,6 @@ const api = {
   openSession: (request: OpenSessionRequest): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionOpen, request),
   closeSession: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionClose),
   getSessionState: (): Promise<SessionState> => ipcRenderer.invoke(IPC.sessionState),
-  sessionReadSelection: (): Promise<SessionSelectionResult> => ipcRenderer.invoke(IPC.sessionReadSelection),
   setSessionSelectionActionAvailability: (request: SetSessionSelectionActionAvailabilityRequest): Promise<void> =>
     ipcRenderer.invoke(IPC.sessionSelectionActionAvailabilitySet, request),
   setWorkspaceLayout: (request: WorkspaceLayoutRequest): Promise<void> =>

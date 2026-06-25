@@ -8,9 +8,8 @@ export const WORKSPACE_MIN_EXPANDED_WIDTH =
   WORKSPACE_PROVIDER_MIN_WIDTH + WORKSPACE_NOTE_MIN_WIDTH + WORKSPACE_SPLIT_HANDLE_WIDTH
 
 export const defaultWorkspaceLayout: WorkspaceLayoutRequest = {
-  primarySurface: 'spark',
-  secondarySurface: null,
-  secondaryCollapsed: false,
+  noteOpen: false,
+  noteCollapsed: false,
   splitRatio: WORKSPACE_DEFAULT_SPLIT_RATIO
 }
 

@@ -64,11 +64,6 @@ function handlePortMessage(
 
   if (value.type === 'refreshCapabilities') {
     void handleRefreshCapabilities(port, value, adapter)
-    return
-  }
-
-  if (value.type === 'readSelection') {
-    handleReadSelection(port, value, adapter)
   }
 }
 
@@ -96,30 +91,6 @@ async function handleRefreshCapabilities(
   if (!hasProviderCapabilities(capabilities)) {
     postAdapterError(port, command, 'target_not_found')
   }
-}
-
-function handleReadSelection(
-  port: MessagePort,
-  command: ProviderCommand,
-  adapter: ReturnType<typeof providerAdapterForHost>
-): void {
-  if (!adapter) {
-    postError(port, command, 'adapter_unavailable')
-    return
-  }
-
-  const result = adapter.readSelection()
-  if (result.kind === 'empty') {
-    postSelectionResult(port, command, null)
-    return
-  }
-
-  if (result.kind === 'selection') {
-    postSelectionResult(port, command, result.selection)
-    return
-  }
-
-  postError(port, command, result.kind === 'out_of_scope' ? 'selection_out_of_scope' : 'payload_too_large')
 }
 
 function handleSetSelectionActionAvailability(
@@ -154,17 +125,6 @@ function postVoidResult(port: MessagePort, command: ProviderCommand): void {
     routeRevision: command.routeRevision,
     ok: true,
     value: { kind: 'void' }
-  })
-}
-
-function postSelectionResult(port: MessagePort, command: ProviderCommand, selection: { text: string } | null): void {
-  port.postMessage({
-    type: 'result',
-    requestId: command.requestId,
-    connectionId: command.connectionId,
-    routeRevision: command.routeRevision,
-    ok: true,
-    value: { kind: 'selection', selection }
   })
 }
 

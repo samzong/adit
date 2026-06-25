@@ -20,18 +20,18 @@ export function useWorkspaceSplit(notePanelRendered: boolean): {
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
   const pendingSplitRatio = useRef<number | null>(null)
   const splitFrame = useRef<number | null>(null)
-  const noteLayoutOpen = layout.secondarySurface === 'note'
-  const secondaryCollapsed = noteLayoutOpen && viewportWidth < WORKSPACE_MIN_EXPANDED_WIDTH
-  const notePanelVisible = notePanelRendered && noteLayoutOpen && !secondaryCollapsed
+  const noteLayoutOpen = layout.noteOpen
+  const noteCollapsed = noteLayoutOpen && viewportWidth < WORKSPACE_MIN_EXPANDED_WIDTH
+  const notePanelVisible = notePanelRendered && noteLayoutOpen && !noteCollapsed
   const notePanelInteractive = notePanelVisible
   const providerWidth =
-    noteLayoutOpen && !secondaryCollapsed ? calculateProviderPaneWidth(viewportWidth, layout.splitRatio) : viewportWidth
+    noteLayoutOpen && !noteCollapsed ? calculateProviderPaneWidth(viewportWidth, layout.splitRatio) : viewportWidth
   const effectiveLayout = useMemo<WorkspaceLayoutRequest>(
     () => ({
       ...layout,
-      secondaryCollapsed
+      noteCollapsed
     }),
-    [layout, secondaryCollapsed]
+    [layout, noteCollapsed]
   )
 
   useEffect(() => {
@@ -56,18 +56,16 @@ export function useWorkspaceSplit(notePanelRendered: boolean): {
   const openNoteLayout = useCallback(() => {
     setLayout((current) => ({
       ...current,
-      primarySurface: 'spark',
-      secondarySurface: 'note',
-      secondaryCollapsed: false
+      noteOpen: true,
+      noteCollapsed: false
     }))
   }, [])
 
   const closeNoteLayout = useCallback(() => {
     setLayout((current) => ({
       ...current,
-      primarySurface: 'spark',
-      secondarySurface: null,
-      secondaryCollapsed: false
+      noteOpen: false,
+      noteCollapsed: false
     }))
   }, [])
 
