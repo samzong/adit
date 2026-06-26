@@ -58,6 +58,7 @@ describe('LibraryStore', () => {
     expect(store.listItems().map((item) => item.id)).toEqual([second.item.id])
     expect(store.listItems({ archived: true }).map((item) => item.id)).toEqual([first.item.id])
     expect(store.listItems({ query: 'Beta' }).map((item) => item.id)).toEqual([second.item.id])
+    expect(store.listItems({ kind: 'markdown_doc' }).map((item) => item.id)).toEqual([second.item.id])
   })
 
   it('updates title and markdown content', () => {

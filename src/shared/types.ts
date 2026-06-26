@@ -17,9 +17,10 @@ export interface SparkListRequest {
   query?: string
 }
 
-export type LibraryItemKind = 'markdown_doc'
-export type LibraryContentFormat = 'markdown'
-export type LibraryContentRole = 'primary'
+export type LibraryItemKind = 'markdown_doc' | 'image_asset' | 'file_asset' | 'code_asset' | 'web_capture'
+export type LibraryContentFormat = 'markdown' | 'plain_text' | 'html' | 'code' | 'image' | 'file'
+export type LibraryContentRole = 'primary' | 'body' | 'preview' | 'source_snapshot'
+export type LibraryAttachmentRole = 'primary' | 'inline' | 'source' | 'export'
 
 export interface LibraryItemRow {
   id: string
@@ -39,9 +40,27 @@ export interface LibraryItemContentRow {
   role: LibraryContentRole
   format: LibraryContentFormat
   body_text: string | null
+  attachment_id: string | null
+  language: string | null
   sort_order: number
+  metadata_json: string | null
   created_at: number
   updated_at: number
+}
+
+export interface LibraryAttachmentRow {
+  id: string
+  item_id: string
+  role: LibraryAttachmentRole
+  file_path: string
+  original_name: string | null
+  mime_type: string | null
+  byte_size: number | null
+  sha256: string | null
+  width: number | null
+  height: number | null
+  created_at: number
+  metadata_json: string | null
 }
 
 export interface LibraryItemSourceRow {
@@ -58,12 +77,14 @@ export interface LibraryItemSourceRow {
 export interface LibraryItemDetail {
   item: LibraryItemRow
   contents: LibraryItemContentRow[]
+  attachments: LibraryAttachmentRow[]
   sources: LibraryItemSourceRow[]
 }
 
 export interface LibraryListRequest {
   archived?: boolean
   query?: string
+  kind?: LibraryItemKind | 'all'
 }
 
 export interface GetLibraryItemRequest {

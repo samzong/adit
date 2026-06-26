@@ -1,8 +1,9 @@
 import { Button, Flex, Icon, IconButton, Menu, Portal, Stack, Text } from '@chakra-ui/react'
-import { ChevronLeft, Download, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, Download, File, MoreHorizontal } from 'lucide-react'
 import type { LibraryItemDetail } from '../../../../shared/types'
 import { markdownFromLibraryDetail } from '../../editor/library-markdown'
 import { MarkdownDocumentEditor } from '../../editor/markdown-document-editor'
+import { formatLibraryKind } from './library-kind'
 
 export function LibraryDetailView({
   detail,
@@ -16,6 +17,33 @@ export function LibraryDetailView({
   onUpdateMarkdown: (markdown: string) => void
 }): JSX.Element {
   const markdown = markdownFromLibraryDetail(detail)
+
+  if (detail.item.kind !== 'markdown_doc') {
+    return (
+      <Stack
+        bg="cardBg"
+        borderColor="border"
+        borderRadius="panel"
+        borderWidth="1px"
+        gap="0"
+        minH="560px"
+        overflow="hidden"
+      >
+        <LibraryDetailHeader detail={detail} onBack={onBack} onExport={onExport} exportDisabled />
+        <Flex align="center" color="muted" flex="1" justify="center" px="6" textAlign="center">
+          <Stack align="center" gap="2">
+            <Icon as={File} boxSize="6" color="accent" />
+            <Text fontSize="md" fontWeight="700">
+              {formatLibraryKind(detail.item.kind)}
+            </Text>
+            <Text fontSize="sm" maxW="360px">
+              This Library item type is stored, but its viewer is not implemented in this phase.
+            </Text>
+          </Stack>
+        </Flex>
+      </Stack>
+    )
+  }
 
   return (
     <Stack
@@ -35,10 +63,12 @@ export function LibraryDetailView({
 
 function LibraryDetailHeader({
   detail,
+  exportDisabled = false,
   onBack,
   onExport
 }: {
   detail: LibraryItemDetail
+  exportDisabled?: boolean
   onBack: () => void
   onExport: () => void
 }): JSX.Element {
@@ -109,7 +139,13 @@ function LibraryDetailHeader({
               p="1.5"
               shadow="menu"
             >
-              <Menu.Item value="export-markdown" borderRadius="7px" gap="2" onClick={onExport}>
+              <Menu.Item
+                value="export-markdown"
+                borderRadius="7px"
+                disabled={exportDisabled}
+                gap="2"
+                onClick={onExport}
+              >
                 <Icon as={Download} boxSize="3.5" />
                 <Text fontSize="sm">Export Markdown</Text>
               </Menu.Item>

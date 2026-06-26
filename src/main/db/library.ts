@@ -15,8 +15,14 @@ export class LibraryStore {
   listItems(request: LibraryListRequest = {}): LibraryItemRow[] {
     const archived = request.archived ? 1 : 0
     const query = request.query?.trim()
+    const kind = request.kind && request.kind !== 'all' ? request.kind : null
     const conditions = ['archived = ?']
     const values: unknown[] = [archived]
+
+    if (kind) {
+      conditions.push('kind = ?')
+      values.push(kind)
+    }
 
     if (query) {
       conditions.push('(title LIKE ? OR preview_text LIKE ?)')
@@ -43,6 +49,9 @@ export class LibraryStore {
     return {
       item,
       contents: this.listContents(id),
+      attachments: this.database
+        .prepare('SELECT * FROM library_attachments WHERE item_id = ? ORDER BY created_at ASC')
+        .all(id) as LibraryItemDetail['attachments'],
       sources: this.database
         .prepare('SELECT * FROM library_item_sources WHERE item_id = ? ORDER BY captured_at DESC')
         .all(id) as LibraryItemSourceRow[]
@@ -68,8 +77,8 @@ export class LibraryStore {
       this.database
         .prepare(
           `INSERT INTO library_item_contents
-           (id, item_id, role, format, body_text, sort_order, created_at, updated_at)
-           VALUES (?, ?, 'primary', 'markdown', ?, 0, ?, ?)`
+           (id, item_id, role, format, body_text, attachment_id, language, sort_order, metadata_json, created_at, updated_at)
+           VALUES (?, ?, 'primary', 'markdown', ?, NULL, NULL, 0, NULL, ?, ?)`
         )
         .run(contentId, itemId, markdown, now, now)
 

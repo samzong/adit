@@ -1,8 +1,9 @@
 import { Box, Flex, HStack, Icon, IconButton, Menu, Portal, Stack, Text } from '@chakra-ui/react'
-import { Archive, ArrowRight, Clock3, FileText, MoreHorizontal } from 'lucide-react'
+import { Archive, ArrowRight, Clock3, MoreHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import type { LibraryItemRow } from '../../../../shared/types'
 import { formatDate } from '../../utils/format'
+import { formatLibraryKind, libraryKindIcon } from './library-kind'
 
 export function LibraryCard({
   busy,
@@ -69,9 +70,9 @@ export function LibraryCard({
           px="2.5"
           py="1"
         >
-          <Icon as={FileText} boxSize="3.5" color="accent" />
+          <Icon as={libraryKindIcon(item.kind)} boxSize="3.5" color="accent" />
           <Text fontSize="11px" fontWeight="700">
-            Document
+            {formatLibraryKind(item.kind)}
           </Text>
         </HStack>
         <Text textStyle="cardTitle" color="fg" lineClamp="2" minW="0" overflow="hidden">

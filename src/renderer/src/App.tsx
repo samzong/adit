@@ -86,7 +86,9 @@ function ElectronApp(): JSX.Element {
       ) : library.detail ? null : (
         <LibraryToolbar
           busy={busy}
+          kind={library.kind}
           query={library.query}
+          setKind={library.setKind}
           setQuery={library.setQuery}
           onCreateItem={libraryActions.createLibraryItem}
         />

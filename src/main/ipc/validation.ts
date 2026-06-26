@@ -1,8 +1,21 @@
 import log from 'electron-log/main'
-import type { CreateMarkdownLibraryItemRequest, LibraryListRequest, SparkListRequest } from '../../shared/types'
+import type {
+  CreateMarkdownLibraryItemRequest,
+  LibraryItemKind,
+  LibraryListRequest,
+  SparkListRequest
+} from '../../shared/types'
 import { isProviderId } from '../providers'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const LIBRARY_KINDS = new Set<LibraryItemKind>([
+  'markdown_doc',
+  'image_asset',
+  'file_asset',
+  'code_asset',
+  'web_capture'
+])
+
 export function sanitizeSparkListRequest(request: unknown): SparkListRequest {
   const input = recordFromUnknown(request)
 
@@ -14,10 +27,15 @@ export function sanitizeSparkListRequest(request: unknown): SparkListRequest {
 
 export function sanitizeLibraryListRequest(request: unknown): LibraryListRequest {
   const input = recordFromUnknown(request)
+  const kind =
+    typeof input.kind === 'string' && input.kind !== 'all' && LIBRARY_KINDS.has(input.kind as LibraryItemKind)
+      ? (input.kind as LibraryItemKind)
+      : 'all'
 
   return {
     archived: Boolean(input.archived),
-    query: typeof input.query === 'string' ? input.query : ''
+    query: typeof input.query === 'string' ? input.query : '',
+    kind
   }
 }
 

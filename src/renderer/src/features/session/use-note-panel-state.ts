@@ -31,7 +31,7 @@ export function useNotePanelState(runAction: RunAction): {
 
   const loadItems = useCallback(async (): Promise<LibraryItemRow[]> => {
     setLoading(true)
-    const nextItems = await window.adit.listLibraryItems()
+    const nextItems = await window.adit.listLibraryItems({ kind: 'markdown_doc' })
     setItems(nextItems)
     setLoading(false)
     return nextItems
