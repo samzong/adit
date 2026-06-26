@@ -34,14 +34,14 @@ export function watchNavigation(
   }
   const didStartNavigation = (
     event: Electron.Event & { isMainFrame?: boolean; isSameDocument?: boolean },
-    _url: string,
+    url: string,
     isSameDocument: boolean,
     isMainFrame: boolean
   ): void => {
     const mainFrame = event.isMainFrame ?? isMainFrame
     const sameDocument = event.isSameDocument ?? isSameDocument
 
-    if (mainFrame && !sameDocument) {
+    if (mainFrame && !sameDocument && isAllowedProviderUrl(provider, url)) {
       handlers.onFullNavigationStart?.()
     }
   }

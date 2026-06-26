@@ -13,6 +13,23 @@ export const defaultWorkspaceLayout: WorkspaceLayoutRequest = {
   splitRatio: WORKSPACE_DEFAULT_SPLIT_RATIO
 }
 
+export function calculateWorkspaceProviderBounds(
+  contentWidth: number,
+  layout: WorkspaceLayoutRequest
+): { x: number; width: number } {
+  if (!layout.noteOpen || layout.noteCollapsed || contentWidth < WORKSPACE_MIN_EXPANDED_WIDTH) {
+    return { x: 0, width: contentWidth }
+  }
+
+  const maxProviderWidth = contentWidth - WORKSPACE_NOTE_MIN_WIDTH - WORKSPACE_SPLIT_HANDLE_WIDTH
+  const providerWidth = Math.min(
+    maxProviderWidth,
+    Math.max(WORKSPACE_PROVIDER_MIN_WIDTH, Math.round(contentWidth * layout.splitRatio))
+  )
+
+  return { x: 0, width: providerWidth }
+}
+
 export function clampWorkspaceSplitRatio(splitRatio: number): number {
   if (!Number.isFinite(splitRatio)) {
     return WORKSPACE_DEFAULT_SPLIT_RATIO
