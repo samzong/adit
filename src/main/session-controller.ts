@@ -8,6 +8,8 @@ import { getProvider, isAllowedProviderUrl, type ProviderConfig } from './provid
 import { watchNavigation } from './nav-watcher'
 import { attachProviderView, createProviderView, removeProviderView, resizeProviderView } from './session-view'
 import { SessionBridge } from './session-bridge'
+import { ExternalLinkPreviewController } from './external-link-preview'
+import { isPreviewableExternalUrl } from './external-link'
 
 interface ActiveSession {
   provider: ProviderConfig
@@ -23,6 +25,7 @@ export class SessionController {
   private active: ActiveSession | null = null
   private selectionActionRequested = false
   private workspaceLayout: WorkspaceLayoutRequest = defaultWorkspaceLayout
+  private readonly externalPreview: ExternalLinkPreviewController
   private readonly bridge = new SessionBridge({
     onInsertSelectionRequested: (selection) => {
       this.sendToRenderer(IPC.sessionInsertSelectionRequested, selection)
@@ -32,13 +35,17 @@ export class SessionController {
   constructor(
     private readonly window: BrowserWindow,
     private readonly store: SparkStore
-  ) {}
+  ) {
+    this.externalPreview = new ExternalLinkPreviewController(window)
+  }
 
   create(providerId: ProviderId): SessionState {
     this.close()
 
     const provider = getProvider(providerId)
-    const view = createProviderView(this.window, provider)
+    const view = createProviderView(this.window, provider, {
+      onExternalLink: (url) => this.externalPreview.open(url, this.workspaceLayout)
+    })
     const active: ActiveSession = {
       provider,
       view,
@@ -79,7 +86,9 @@ export class SessionController {
       throw new Error('Session URL is outside provider allowlist')
     }
 
-    const view = createProviderView(this.window, provider)
+    const view = createProviderView(this.window, provider, {
+      onExternalLink: (url) => this.externalPreview.open(url, this.workspaceLayout)
+    })
     const active: ActiveSession = {
       provider,
       view,
@@ -114,6 +123,7 @@ export class SessionController {
     const active = this.active
     active.mode = 'closing'
     this.publishState()
+    this.externalPreview.close()
     this.flushActive(active)
     active.unwatch()
     this.bridge.detach()
@@ -130,6 +140,8 @@ export class SessionController {
   }
 
   resize(): void {
+    this.externalPreview.resize(this.workspaceLayout)
+
     if (this.active) {
       resizeProviderView(this.window, this.active.view, this.workspaceLayout)
     }
@@ -173,6 +185,7 @@ export class SessionController {
 
     active.unwatch()
     this.bridge.detach()
+    this.externalPreview.close()
     removeProviderView(this.window, active.view)
     this.active = null
     this.workspaceLayout = defaultWorkspaceLayout
@@ -263,6 +276,11 @@ export class SessionController {
         })
       },
       onBlockedNavigation: (url) => {
+        if (isPreviewableExternalUrl(url)) {
+          this.externalPreview.open(url, this.workspaceLayout)
+          return
+        }
+
         this.sendToRenderer(IPC.appToast, {
           level: 'error',
           message: `Blocked navigation outside the provider allowlist: ${url}`

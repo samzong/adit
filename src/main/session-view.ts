@@ -1,14 +1,10 @@
 import { join } from 'node:path'
 import { BrowserWindow, WebContentsView, session, type WebPreferences } from 'electron'
 import type { WorkspaceLayoutRequest } from '../shared/types'
-import {
-  WORKSPACE_MIN_EXPANDED_WIDTH,
-  WORKSPACE_NOTE_MIN_WIDTH,
-  WORKSPACE_PROVIDER_MIN_WIDTH,
-  WORKSPACE_SPLIT_HANDLE_WIDTH
-} from '../shared/workspace-layout'
+import { calculateWorkspaceProviderBounds } from '../shared/workspace-layout'
 import { isAllowedProviderUrl, type ProviderConfig } from './providers'
 import { configureProviderPermissions } from './provider-permissions'
+import { isPreviewableExternalUrl } from './external-link'
 
 const HEADER_HEIGHT = 46
 const PROVIDER_LOADING_BACKGROUND = '#111315'
@@ -19,7 +15,11 @@ const configuredPartitions = new Set<string>()
 const attachedProviderViews = new WeakSet<WebContentsView>()
 const providerAdapterPreloadPath = join(__dirname, '../preload/provider-adapter.js')
 
-export function createProviderView(window: BrowserWindow, provider: ProviderConfig): WebContentsView {
+export function createProviderView(
+  window: BrowserWindow,
+  provider: ProviderConfig,
+  handlers: { onExternalLink: (url: string) => void }
+): WebContentsView {
   configurePartition(provider)
 
   const view = new WebContentsView({
@@ -31,6 +31,10 @@ export function createProviderView(window: BrowserWindow, provider: ProviderConf
   view.webContents.setUserAgent(chromeUserAgent)
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (!isAllowedProviderUrl(provider, url)) {
+      if (isPreviewableExternalUrl(url)) {
+        handlers.onExternalLink(url)
+      }
+
       return { action: 'deny' }
     }
 
@@ -59,7 +63,7 @@ export function attachProviderView(window: BrowserWindow, view: WebContentsView,
 
 export function resizeProviderView(window: BrowserWindow, view: WebContentsView, layout: WorkspaceLayoutRequest): void {
   const bounds = window.getContentBounds()
-  const providerBounds = calculateProviderBounds(bounds.width, layout)
+  const providerBounds = calculateWorkspaceProviderBounds(bounds.width, layout)
 
   view.setBounds({
     x: providerBounds.x,
@@ -88,20 +92,6 @@ function providerWebPreferences(provider: ProviderConfig): WebPreferences {
     sandbox: true,
     webSecurity: true
   }
-}
-
-function calculateProviderBounds(contentWidth: number, layout: WorkspaceLayoutRequest): { x: number; width: number } {
-  if (!layout.noteOpen || layout.noteCollapsed || contentWidth < WORKSPACE_MIN_EXPANDED_WIDTH) {
-    return { x: 0, width: contentWidth }
-  }
-
-  const maxProviderWidth = contentWidth - WORKSPACE_NOTE_MIN_WIDTH - WORKSPACE_SPLIT_HANDLE_WIDTH
-  const providerWidth = Math.min(
-    maxProviderWidth,
-    Math.max(WORKSPACE_PROVIDER_MIN_WIDTH, Math.round(contentWidth * layout.splitRatio))
-  )
-
-  return { x: 0, width: providerWidth }
 }
 
 function configurePartition(provider: ProviderConfig): void {

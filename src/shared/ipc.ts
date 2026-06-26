@@ -21,6 +21,8 @@ export const IPC = {
   sessionInsertSelectionRequested: 'session:insert-selection-requested',
   sessionSelectionActionAvailabilitySet: 'session:selection-action-availability-set',
   workspaceLayoutSet: 'workspace:layout-set',
+  externalPreviewClose: 'external-preview:close',
+  externalPreviewOpenExternal: 'external-preview:open-external',
   sessionStateChanged: 'session:state-changed',
   sessionTitleUpdated: 'session:title-updated',
   sessionLoginRequired: 'session:login-required',
