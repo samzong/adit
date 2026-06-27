@@ -7,6 +7,8 @@ export const IPC = {
   libraryList: 'library:list',
   libraryGet: 'library:get',
   libraryCreateMarkdown: 'library:create-markdown',
+  libraryCreateImage: 'library:create-image',
+  libraryAddImageAttachment: 'library:add-image-attachment',
   libraryUpdateTitle: 'library:update-title',
   libraryUpdateContent: 'library:update-content',
   libraryArchive: 'library:archive',

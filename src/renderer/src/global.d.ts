@@ -1,6 +1,9 @@
 import type {
+  AddLibraryImageAttachmentRequest,
+  AddLibraryImageAttachmentResult,
   ArchiveLibraryItemRequest,
   ArchiveSparkRequest,
+  CreateImageLibraryItemRequest,
   CreateMarkdownLibraryItemRequest,
   CreateSessionRequest,
   ExportMarkdownLibraryItemRequest,
@@ -34,6 +37,8 @@ declare global {
       listLibraryItems: (request?: LibraryListRequest) => Promise<LibraryItemRow[]>
       getLibraryItem: (request: GetLibraryItemRequest) => Promise<LibraryItemDetail | null>
       createMarkdownLibraryItem: (request?: CreateMarkdownLibraryItemRequest) => Promise<LibraryItemDetail>
+      createImageLibraryItem: (request: CreateImageLibraryItemRequest) => Promise<LibraryItemDetail>
+      addLibraryImageAttachment: (request: AddLibraryImageAttachmentRequest) => Promise<AddLibraryImageAttachmentResult>
       updateLibraryItemTitle: (request: UpdateLibraryItemTitleRequest) => Promise<LibraryItemDetail>
       updateLibraryItemContent: (request: UpdateLibraryItemContentRequest) => Promise<LibraryItemDetail>
       archiveLibraryItem: (request: ArchiveLibraryItemRequest) => Promise<LibraryItemDetail>

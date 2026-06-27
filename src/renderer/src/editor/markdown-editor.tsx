@@ -15,6 +15,7 @@ import {
   codeBlockPlugin,
   diffSourcePlugin,
   headingsPlugin,
+  imagePlugin,
   linkPlugin,
   listsPlugin,
   markdownShortcutPlugin,
@@ -60,6 +61,7 @@ function MarkdownEditorToolbar(): JSX.Element {
 export function createMarkdownEditorPlugins(): ReturnType<typeof headingsPlugin>[] {
   return [
     headingsPlugin(),
+    imagePlugin({ disableImageResize: true, disableImageSettingsButton: true }),
     listsPlugin(),
     quotePlugin(),
     linkPlugin(),

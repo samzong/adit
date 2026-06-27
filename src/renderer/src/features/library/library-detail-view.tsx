@@ -1,5 +1,6 @@
-import { Button, Flex, Icon, IconButton, Menu, Portal, Stack, Text } from '@chakra-ui/react'
+import { Button, Flex, Icon, IconButton, Image, Menu, Portal, Stack, Text } from '@chakra-ui/react'
 import { ChevronLeft, Download, File, MoreHorizontal } from 'lucide-react'
+import { libraryAttachmentUrl } from '../../../../shared/library-assets'
 import type { LibraryItemDetail } from '../../../../shared/types'
 import { markdownFromLibraryDetail } from '../../editor/library-markdown'
 import { MarkdownDocumentEditor } from '../../editor/markdown-document-editor'
@@ -17,6 +18,40 @@ export function LibraryDetailView({
   onUpdateMarkdown: (markdown: string) => void
 }): JSX.Element {
   const markdown = markdownFromLibraryDetail(detail)
+
+  if (detail.item.kind === 'image_asset') {
+    const image = detail.attachments.find((attachment) => attachment.role === 'primary')
+
+    return (
+      <Stack
+        bg="cardBg"
+        borderColor="border"
+        borderRadius="panel"
+        borderWidth="1px"
+        gap="0"
+        minH="560px"
+        overflow="hidden"
+      >
+        <LibraryDetailHeader detail={detail} onBack={onBack} onExport={onExport} exportDisabled />
+        <Flex align="center" flex="1" justify="center" minH="0" p="6">
+          {image ? (
+            <Image
+              alt={detail.item.title}
+              borderRadius="10px"
+              maxH="min(620px, 72vh)"
+              maxW="full"
+              objectFit="contain"
+              src={libraryAttachmentUrl(image.id)}
+            />
+          ) : (
+            <Text color="muted" fontSize="sm" fontWeight="600">
+              Image attachment missing.
+            </Text>
+          )}
+        </Flex>
+      </Stack>
+    )
+  }
 
   if (detail.item.kind !== 'markdown_doc') {
     return (

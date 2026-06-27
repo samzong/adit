@@ -23,6 +23,10 @@ export function useSaveLibraryMarkdown({
         return
       }
 
+      if ((primary.body_text ?? '') === markdown) {
+        return
+      }
+
       const revision = saveRevision.current + 1
       saveRevision.current = revision
       const itemId = current.item.id

@@ -1,8 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc'
 import type {
+  AddLibraryImageAttachmentRequest,
+  AddLibraryImageAttachmentResult,
   ArchiveLibraryItemRequest,
   ArchiveSparkRequest,
+  CreateImageLibraryItemRequest,
   CreateMarkdownLibraryItemRequest,
   CreateSessionRequest,
   ExportMarkdownLibraryItemRequest,
@@ -43,6 +46,10 @@ const api = {
     ipcRenderer.invoke(IPC.libraryGet, request),
   createMarkdownLibraryItem: (request?: CreateMarkdownLibraryItemRequest): Promise<LibraryItemDetail> =>
     ipcRenderer.invoke(IPC.libraryCreateMarkdown, request),
+  createImageLibraryItem: (request: CreateImageLibraryItemRequest): Promise<LibraryItemDetail> =>
+    ipcRenderer.invoke(IPC.libraryCreateImage, request),
+  addLibraryImageAttachment: (request: AddLibraryImageAttachmentRequest): Promise<AddLibraryImageAttachmentResult> =>
+    ipcRenderer.invoke(IPC.libraryAddImageAttachment, request),
   updateLibraryItemTitle: (request: UpdateLibraryItemTitleRequest): Promise<LibraryItemDetail> =>
     ipcRenderer.invoke(IPC.libraryUpdateTitle, request),
   updateLibraryItemContent: (request: UpdateLibraryItemContentRequest): Promise<LibraryItemDetail> =>

@@ -2,12 +2,31 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseConnection } from './connection'
 import type {
   CreateMarkdownLibraryItemRequest,
+  LibraryAttachmentRow,
   LibraryItemContentRow,
   LibraryItemDetail,
   LibraryItemRow,
   LibraryItemSourceRow,
   LibraryListRequest
 } from '../../shared/types'
+
+export interface StoredLibraryImage {
+  attachmentId: string
+  filePath: string
+  originalName: string | null
+  mimeType: string
+  byteSize: number
+  sha256: string
+  width: number | null
+  height: number | null
+  title: string
+  metadataJson: string | null
+}
+
+export interface AddImageAttachmentResult {
+  detail: LibraryItemDetail
+  attachment: LibraryAttachmentRow
+}
 
 export class LibraryStore {
   constructor(private readonly database: DatabaseConnection) {}
@@ -58,6 +77,14 @@ export class LibraryStore {
     }
   }
 
+  getAttachment(id: string): LibraryAttachmentRow | null {
+    return (
+      (this.database.prepare('SELECT * FROM library_attachments WHERE id = ?').get(id) as
+        | LibraryAttachmentRow
+        | undefined) ?? null
+    )
+  }
+
   createMarkdownItem(request: CreateMarkdownLibraryItemRequest = {}, now = Date.now()): LibraryItemDetail {
     const create = this.database.transaction(() => {
       const itemId = randomUUID()
@@ -106,6 +133,76 @@ export class LibraryStore {
     return create()
   }
 
+  createImageItem(image: StoredLibraryImage, now = Date.now()): LibraryItemDetail {
+    const create = this.database.transaction(() => {
+      const itemId = randomUUID()
+      const title = cleanLibraryTitle(image.title) ?? 'Image'
+
+      this.database
+        .prepare(
+          `INSERT INTO library_items
+           (id, kind, title, preview_text, archived, pinned, created_at, updated_at, last_opened_at)
+           VALUES (?, 'image_asset', ?, ?, 0, 0, ?, ?, ?)`
+        )
+        .run(itemId, title, image.originalName ?? image.mimeType, now, now, now)
+
+      this.insertImageAttachment(itemId, image, 'primary', now)
+
+      this.database
+        .prepare(
+          `INSERT INTO library_item_contents
+           (id, item_id, role, format, body_text, attachment_id, language, sort_order, metadata_json, created_at, updated_at)
+           VALUES (?, ?, 'primary', 'image', NULL, ?, NULL, 0, NULL, ?, ?)`
+        )
+        .run(randomUUID(), itemId, image.attachmentId, now, now)
+
+      return this.requireItem(itemId)
+    })
+
+    return create()
+  }
+
+  addImageAttachment(itemId: string, image: StoredLibraryImage, now = Date.now()): AddImageAttachmentResult {
+    const add = this.database.transaction(() => {
+      const item = this.getItem(itemId)
+
+      if (!item || item.item.kind !== 'markdown_doc' || !this.getPrimaryMarkdownContent(itemId)) {
+        throw new Error('Markdown Library item not found')
+      }
+
+      this.insertImageAttachment(itemId, image, 'inline', now)
+
+      this.database
+        .prepare(
+          `INSERT INTO library_item_contents
+           (id, item_id, role, format, body_text, attachment_id, language, sort_order, metadata_json, created_at, updated_at)
+           VALUES (?, ?, 'body', 'image', NULL, ?, NULL, ?, NULL, ?, ?)`
+        )
+        .run(randomUUID(), itemId, image.attachmentId, this.nextContentSortOrder(itemId), now, now)
+
+      this.database
+        .prepare(
+          `UPDATE library_items
+           SET updated_at = ?
+           WHERE id = ?`
+        )
+        .run(now, itemId)
+
+      const attachment = this.getAttachment(image.attachmentId)
+
+      if (!attachment) {
+        throw new Error('Library attachment not found')
+      }
+
+      return {
+        detail: this.requireItem(itemId),
+        attachment
+      }
+    })
+
+    return add()
+  }
+
   updateTitle(id: string, title: string, now = Date.now()): LibraryItemDetail {
     const clean = cleanLibraryTitle(title)
 
@@ -130,6 +227,10 @@ export class LibraryStore {
 
       if (!content) {
         throw new Error('Library item content not found')
+      }
+
+      if (content.body_text === bodyText) {
+        return this.requireItem(id)
       }
 
       const preview = previewFromMarkdown(bodyText)
@@ -214,6 +315,42 @@ export class LibraryStore {
         .prepare('SELECT * FROM library_item_contents WHERE item_id = ? AND id = ?')
         .get(itemId, contentId) as LibraryItemContentRow | undefined) ?? null
     )
+  }
+
+  private insertImageAttachment(
+    itemId: string,
+    image: StoredLibraryImage,
+    role: 'primary' | 'inline',
+    now: number
+  ): void {
+    this.database
+      .prepare(
+        `INSERT INTO library_attachments
+         (id, item_id, role, file_path, original_name, mime_type, byte_size, sha256, width, height, created_at, metadata_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        image.attachmentId,
+        itemId,
+        role,
+        image.filePath,
+        image.originalName,
+        image.mimeType,
+        image.byteSize,
+        image.sha256,
+        image.width,
+        image.height,
+        now,
+        image.metadataJson
+      )
+  }
+
+  private nextContentSortOrder(itemId: string): number {
+    const row = this.database
+      .prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM library_item_contents WHERE item_id = ?')
+      .get(itemId) as { next: number } | undefined
+
+    return row?.next ?? 0
   }
 }
 
