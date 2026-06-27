@@ -67,7 +67,15 @@ function ElectronApp(): JSX.Element {
   )
 
   if (sessionState.mode !== 'list') {
-    return <SessionWorkspace sessionState={sessionState} runAction={runAction} setSessionState={setSessionState} />
+    return (
+      <SessionWorkspace
+        error={error}
+        sessionState={sessionState}
+        runAction={runAction}
+        setSessionState={setSessionState}
+        toast={toast}
+      />
+    )
   }
 
   return (

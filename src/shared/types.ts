@@ -81,6 +81,18 @@ export interface LibraryItemDetail {
   sources: LibraryItemSourceRow[]
 }
 
+export type LibraryImageInput =
+  | {
+      kind: 'bytes'
+      bytes: ArrayBuffer
+      name?: string
+      mimeType?: string
+    }
+  | {
+      kind: 'url'
+      url: string
+    }
+
 export interface LibraryListRequest {
   archived?: boolean
   query?: string
@@ -101,6 +113,21 @@ export interface CreateMarkdownLibraryItemRequest {
     title?: string | null
     capturedAt?: number
   }
+}
+
+export interface CreateImageLibraryItemRequest {
+  image: LibraryImageInput
+}
+
+export interface AddLibraryImageAttachmentRequest {
+  itemId: string
+  image: LibraryImageInput
+}
+
+export interface AddLibraryImageAttachmentResult {
+  detail: LibraryItemDetail
+  attachment: LibraryAttachmentRow
+  markdown: string
 }
 
 export interface UpdateLibraryItemTitleRequest {

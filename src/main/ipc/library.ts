@@ -2,7 +2,9 @@ import { writeFile } from 'node:fs/promises'
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { IPC } from '../../shared/ipc'
 import type {
+  AddLibraryImageAttachmentRequest,
   ArchiveLibraryItemRequest,
+  CreateImageLibraryItemRequest,
   CreateMarkdownLibraryItemRequest,
   ExportMarkdownLibraryItemRequest,
   GetLibraryItemRequest,
@@ -18,6 +20,7 @@ import {
   sanitizeCreateMarkdownRequest,
   sanitizeLibraryListRequest
 } from './validation'
+import { markdownForImageAttachment, prepareLibraryImage } from '../library-assets'
 
 export function registerLibraryIpc(library: LibraryStore): void {
   ipcMain.handle(IPC.libraryList, (_event, request: LibraryListRequest = {}) =>
@@ -33,6 +36,24 @@ export function registerLibraryIpc(library: LibraryStore): void {
     const detail = library.createMarkdownItem(sanitizeCreateMarkdownRequest(request))
     event.sender.send(IPC.libraryChanged)
     return detail
+  })
+
+  ipcMain.handle(IPC.libraryCreateImage, async (event, request: CreateImageLibraryItemRequest) => {
+    const image = await prepareLibraryImage(request?.image)
+    const detail = library.createImageItem(image)
+    event.sender.send(IPC.libraryChanged)
+    return detail
+  })
+
+  ipcMain.handle(IPC.libraryAddImageAttachment, async (event, request: AddLibraryImageAttachmentRequest) => {
+    assertItemId(request?.itemId)
+    const image = await prepareLibraryImage(request.image)
+    const result = library.addImageAttachment(request.itemId, image)
+    event.sender.send(IPC.libraryChanged)
+    return {
+      ...result,
+      markdown: markdownForImageAttachment(result.attachment)
+    }
   })
 
   ipcMain.handle(IPC.libraryUpdateTitle, (event, request: UpdateLibraryItemTitleRequest) => {

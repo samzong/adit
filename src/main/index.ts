@@ -6,6 +6,7 @@ import { openDatabase, type DatabaseConnection } from './db/connection'
 import { LibraryStore } from './db/library'
 import { SparkStore } from './db/sparks'
 import { registerIpc } from './ipc'
+import { registerLibraryAssetProtocol, registerLibraryAssetScheme } from './library-assets'
 import { providers } from './providers'
 import { SessionController } from './session-controller'
 import { createMainWindow } from './window'
@@ -22,6 +23,7 @@ let isQuitting = false
 log.initialize()
 
 app.setName('Adit')
+registerLibraryAssetScheme()
 
 if (!acquiredSingleInstanceLock) {
   app.quit()
@@ -41,6 +43,7 @@ if (!acquiredSingleInstanceLock) {
     mainWindow = createMainWindow()
     sessions = new SessionController(mainWindow, sparkStore)
 
+    registerLibraryAssetProtocol(libraryStore)
     registerIpc(sparkStore, libraryStore, sessions)
     configureMenu()
     configureMenubar()

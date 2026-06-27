@@ -55,7 +55,7 @@ export function useRendererEvents({
         if (libraryDetail) {
           void window.adit.getLibraryItem({ id: libraryDetail.item.id }).then((detail) => {
             if (detail) {
-              setLibraryDetail(detail)
+              setLibraryDetail((latest) => (latest?.item.id === detail.item.id ? detail : latest))
             }
           })
         }

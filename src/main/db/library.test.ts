@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import schemaSql from './schema.sql?raw'
-import { LibraryStore } from './library'
+import { LibraryStore, type StoredLibraryImage } from './library'
 
 describe('LibraryStore', () => {
   let database: Database.Database
@@ -78,6 +78,42 @@ describe('LibraryStore', () => {
     expect(cleared.contents[0].body_text).toBe('')
     expect(cleared.item.preview_text).toBeNull()
     expect(cleared.item.updated_at).toBe(40)
+
+    const unchanged = store.updateContent(created.item.id, '', content.id, 50)
+    expect(unchanged.item.updated_at).toBe(40)
+    expect(unchanged.contents[0].updated_at).toBe(40)
+  })
+
+  it('creates image items and attaches inline images to markdown items', () => {
+    const image = testImage('image-attachment')
+    const imageItem = store.createImageItem(image, 20)
+
+    expect(imageItem.item).toMatchObject({
+      kind: 'image_asset',
+      preview_text: 'diagram.png',
+      title: 'diagram'
+    })
+    expect(imageItem.attachments[0]).toMatchObject({
+      id: image.attachmentId,
+      file_path: image.filePath,
+      mime_type: 'image/png',
+      original_name: 'diagram.png',
+      role: 'primary'
+    })
+    expect(imageItem.contents[0]).toMatchObject({
+      attachment_id: image.attachmentId,
+      format: 'image',
+      role: 'primary'
+    })
+
+    const note = store.createMarkdownItem({ title: 'Note', markdown: 'Body' }, 30)
+    const attached = store.addImageAttachment(note.item.id, testImage('note-attachment'), 40)
+
+    expect(attached.attachment.role).toBe('inline')
+    expect(attached.detail.item.kind).toBe('markdown_doc')
+    expect(attached.detail.item.updated_at).toBe(40)
+    expect(attached.detail.attachments[0].id).toBe('note-attachment')
+    expect(attached.detail.contents.map((content) => content.format)).toEqual(['markdown', 'image'])
   })
 
   it('rolls back markdown content when item metadata update fails', () => {
@@ -112,3 +148,18 @@ describe('LibraryStore', () => {
     expect(store.listItems()).toHaveLength(1)
   })
 })
+
+function testImage(attachmentId: string): StoredLibraryImage {
+  return {
+    attachmentId,
+    byteSize: 8,
+    filePath: `attachments/${attachmentId}.png`,
+    height: 20,
+    metadataJson: null,
+    mimeType: 'image/png',
+    originalName: 'diagram.png',
+    sha256: 'hash',
+    title: 'diagram',
+    width: 10
+  }
+}

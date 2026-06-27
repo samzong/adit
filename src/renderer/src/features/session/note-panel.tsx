@@ -1,12 +1,14 @@
 import { Box, Button, Flex, Icon, IconButton, Input, Menu, Portal, Stack, Text } from '@chakra-ui/react'
-import { ChevronLeft, Download, FileText, Folder, MoreHorizontal, Plus, Search } from 'lucide-react'
+import { ChevronLeft, Download, Folder, Image as ImageIcon, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { useMemo, useState, type RefObject } from 'react'
-import type { LibraryItemDetail, LibraryItemRow } from '../../../../shared/types'
+import type { LibraryImageInput, LibraryItemDetail, LibraryItemRow } from '../../../../shared/types'
 import { WORKSPACE_NOTE_MIN_WIDTH } from '../../../../shared/workspace-layout'
 import { markdownFromLibraryDetail } from '../../editor/library-markdown'
 import { MarkdownDocumentEditor, type MarkdownDocumentEditorHandle } from '../../editor/markdown-document-editor'
 import { AditEmptyState } from '../../ui/empty-state'
 import { formatDate } from '../../utils/format'
+import { formatLibraryKind, libraryKindIcon } from '../library/library-kind'
+import { hasImageDrop, hasPossibleImageDrop, imageInputFromDrop } from './image-drop'
 
 export type NotePanelMode = 'chooser' | 'editor'
 
@@ -18,6 +20,7 @@ export function NotePanel({
   mode,
   note,
   onCreateNote,
+  onDropImage,
   onExportNote,
   onOpenNote,
   onSwitchNote,
@@ -30,6 +33,7 @@ export function NotePanel({
   mode: NotePanelMode
   note: LibraryItemDetail | null
   onCreateNote: () => void
+  onDropImage: (image: LibraryImageInput, insertMarkdown?: (markdown: string) => boolean) => void
   onExportNote: () => void
   onOpenNote: (id: string) => void
   onSwitchNote: () => void
@@ -37,6 +41,8 @@ export function NotePanel({
 }): JSX.Element {
   const showEditor = mode === 'editor' && note
   const markdown = markdownFromLibraryDetail(note)
+  const [dropActive, setDropActive] = useState(false)
+  const [dropError, setDropError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const normalizedQuery = query.trim().toLowerCase()
   const visibleItems = useMemo(() => {
@@ -61,7 +67,88 @@ export function NotePanel({
       minW={`${WORKSPACE_NOTE_MIN_WIDTH}px`}
       overflow="hidden"
       pointerEvents={active ? 'auto' : 'none'}
+      position="relative"
+      onDragLeave={(event) => {
+        const related = event.relatedTarget
+        if (related instanceof Node && event.currentTarget.contains(related)) {
+          return
+        }
+        setDropActive(false)
+      }}
+      onDragOver={(event) => {
+        if (!hasPossibleImageDrop(event.dataTransfer)) {
+          return
+        }
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'copy'
+        setDropActive(true)
+      }}
+      onDrop={(event) => {
+        event.preventDefault()
+        if (!hasImageDrop(event.dataTransfer)) {
+          setDropActive(false)
+          setDropError('Unsupported image drag payload.')
+          return
+        }
+
+        setDropActive(false)
+        void imageInputFromDrop(event.dataTransfer)
+          .then((image) => {
+            if (!image) {
+              throw new Error('Unsupported image drag payload.')
+            }
+            setDropError(null)
+            onDropImage(image, showEditor ? (value) => editorRef.current?.insertMarkdown(value) ?? false : undefined)
+          })
+          .catch((reason) => {
+            setDropError(reason instanceof Error ? reason.message : 'Unsupported image drag payload.')
+          })
+      }}
     >
+      {dropActive && (
+        <Flex
+          align="center"
+          bg="track"
+          borderColor="accent"
+          borderRadius="12px"
+          borderStyle="dashed"
+          borderWidth="1px"
+          color="accent"
+          gap="2"
+          inset="3"
+          justify="center"
+          pointerEvents="none"
+          position="absolute"
+          shadow="cardHover"
+          zIndex="2"
+        >
+          <Icon as={ImageIcon} boxSize="5" />
+          <Text fontSize="sm" fontWeight="700">
+            {showEditor ? 'Drop to insert image' : 'Drop to save image'}
+          </Text>
+        </Flex>
+      )}
+      {dropError && (
+        <Box
+          bg="cardBg"
+          borderColor="borderStrong"
+          borderRadius="10px"
+          borderWidth="1px"
+          bottom="3"
+          color="muted"
+          left="3"
+          px="3"
+          py="2"
+          position="absolute"
+          right="3"
+          shadow="menu"
+          zIndex="3"
+        >
+          <Text fontSize="xs" fontWeight="600">
+            {dropError}
+          </Text>
+        </Box>
+      )}
       {showEditor ? (
         <>
           <Flex
@@ -150,7 +237,7 @@ export function NotePanel({
         <>
           <Stack flex="1" gap="3" minH="0" overflow="auto" p="4">
             {loading ? (
-              <AditEmptyState description="Loading saved documents..." icon={<Folder />} title="Loading notes" />
+              <AditEmptyState description="Loading saved Library items..." icon={<Folder />} title="Loading Library" />
             ) : items.length > 0 ? (
               <>
                 <Flex align="center" borderBottomColor="border" borderBottomWidth="1px" gap="2.5" pb="3" w="full">
@@ -175,7 +262,7 @@ export function NotePanel({
                       fontWeight="500"
                       h="8"
                       pl="8"
-                      placeholder="Search notes"
+                      placeholder="Search Library"
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                       _focus={{ bg: 'panelHeader', borderColor: 'focusRing' }}
@@ -224,7 +311,7 @@ export function NotePanel({
                           onClick={() => onOpenNote(item.id)}
                           _hover={{ bg: 'cardHoverBg', borderColor: 'borderStrong' }}
                         >
-                          <Icon as={FileText} boxSize="4" color="accent" flexShrink="0" />
+                          <Icon as={libraryKindIcon(item.kind)} boxSize="4" color="accent" flexShrink="0" />
                           <Stack gap="0.5" minW="0">
                             <Text
                               fontSize="sm"
@@ -236,7 +323,7 @@ export function NotePanel({
                               {item.title}
                             </Text>
                             <Text color="muted" fontSize="xs" fontWeight="500" lineClamp="1">
-                              {item.preview_text || formatDate(item.updated_at)}
+                              {item.preview_text || `${formatLibraryKind(item.kind)} · ${formatDate(item.updated_at)}`}
                             </Text>
                           </Stack>
                         </Flex>
@@ -245,9 +332,9 @@ export function NotePanel({
                   </Stack>
                 ) : (
                   <AditEmptyState
-                    description="Try another note title or preview."
+                    description="Try another title or preview."
                     icon={<Search />}
-                    title="No matching notes"
+                    title="No matching items"
                   />
                 )}
               </>

@@ -1,8 +1,9 @@
-import { Box, Flex } from '@chakra-ui/react'
+import { Box, Flex, Stack } from '@chakra-ui/react'
 import { useEffect, useRef } from 'react'
-import type { SessionState } from '../../../../shared/types'
+import type { SessionState, ToastMessage } from '../../../../shared/types'
 import type { RunAction } from '../../app/types'
 import type { MarkdownDocumentEditorHandle } from '../../editor/markdown-document-editor'
+import { StatusNotice } from '../../ui/status-notice'
 import { NotePanel } from './note-panel'
 import { SessionBar } from './session-bar'
 import { useNotePanelState } from './use-note-panel-state'
@@ -11,12 +12,16 @@ import { WorkspaceSplitHandle } from './workspace-split-handle'
 
 export function SessionWorkspace({
   sessionState,
+  error,
   runAction,
-  setSessionState
+  setSessionState,
+  toast
 }: {
+  error: string | null
   sessionState: SessionState
   runAction: RunAction
   setSessionState: (state: SessionState) => void
+  toast: ToastMessage | null
 }): JSX.Element {
   const notePanel = useNotePanelState(runAction)
   const workspaceSplit = useWorkspaceSplit(notePanel.rendered)
@@ -64,6 +69,12 @@ export function SessionWorkspace({
         notePanelOpen={notePanel.requestedOpen}
         onToggleNotePanel={toggleNotePanel}
       />
+      {(error || toast) && (
+        <Stack bg="bg" borderBottomColor="border" borderBottomWidth="1px" flexShrink="0" gap="2" p="3">
+          {error && <StatusNotice level="error" message={error} />}
+          {toast && <StatusNotice level={toast.level} message={toast.message} />}
+        </Stack>
+      )}
       <Box flex="1" minH="0" overflow="hidden" position="relative">
         {workspaceSplit.notePanelVisible ? (
           <Flex h="full" minW="0">
@@ -80,6 +91,7 @@ export function SessionWorkspace({
               mode={notePanel.mode}
               note={notePanel.currentNote}
               onCreateNote={notePanel.createNote}
+              onDropImage={notePanel.saveDroppedImage}
               onExportNote={notePanel.exportNote}
               onOpenNote={(id) => {
                 void notePanel.openNote(id)
