@@ -9,6 +9,7 @@
     "dev": "pnpm rebuild:electron && electron-vite dev",
     "build": "electron-vite build",
     "pack:mac": "pnpm rebuild:electron && pnpm build && electron-builder --mac --dir --publish never",
+    "install:app": "pnpm pack:mac && node scripts/install-app.mjs",
     "dist:mac:arm64": "pnpm rebuild:electron && pnpm build && electron-builder --mac dmg --arm64 --publish never",
     "preview": "pnpm rebuild:electron && electron-vite preview",
     "postinstall": "pnpm rebuild:electron",
