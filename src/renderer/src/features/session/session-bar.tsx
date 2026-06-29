@@ -98,6 +98,7 @@ export function SessionBar({
             h="8"
             onClick={onToggleNotePanel}
             px="3"
+            title="Toggle Note (⌘⇧N)"
             w="72px"
             _hover={{ bg: 'accentHover' }}
           >

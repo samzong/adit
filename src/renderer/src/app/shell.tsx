@@ -59,11 +59,18 @@ export function SectionTabs({
         p="1.5"
         role="tablist"
       >
-        <SectionTab icon={Sparkles} label="Spark" active={section === 'spark'} onClick={() => setSection('spark')} />
+        <SectionTab
+          icon={Sparkles}
+          label="Spark"
+          active={section === 'spark'}
+          shortcut="⌘1"
+          onClick={() => setSection('spark')}
+        />
         <SectionTab
           icon={Folder}
           label="Library"
           active={section === 'library'}
+          shortcut="⌘2"
           onClick={() => setSection('library')}
         />
       </HStack>
@@ -75,11 +82,13 @@ function SectionTab({
   icon,
   label,
   active,
+  shortcut,
   onClick
 }: {
   icon: typeof Sparkles
   label: string
   active: boolean
+  shortcut: string
   onClick: () => void
 }): JSX.Element {
   return (
@@ -98,6 +107,7 @@ function SectionTab({
       minW="148px"
       onClick={onClick}
       px="6"
+      title={`${label} (${shortcut})`}
       shadow={active ? 'trackActive' : 'none'}
       variant="plain"
       _hover={{ color: active ? 'fg' : 'fgSoft' }}
@@ -223,6 +233,7 @@ function NewSessionSplit({
         fontWeight="600"
         pl="3.5"
         pr="3"
+        title={`New ${primary.label} (⌘N)`}
         onClick={() => onCreateSession(primary.id)}
         _hover={{ bg: 'accentHover' }}
       >

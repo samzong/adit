@@ -69,6 +69,8 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
     nextButton.type = 'button'
     nextButton.className = 'adit-provider-selection-action'
     nextButton.textContent = 'Insert selection'
+    nextButton.title = 'Insert selected text into Note (⌘⇧I)'
+    nextButton.setAttribute('aria-label', 'Insert selected text into Note')
     nextButton.dataset.hidden = 'true'
     nextButton.addEventListener('mousedown', (event) => {
       event.preventDefault()
@@ -90,11 +92,11 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
     }
   }
 
-  const requestInsert = (): void => {
+  const requestInsert = (): boolean => {
     const selection = currentSelection()
-    if (!selection || !route) {
+    if (!enabled || !selection || !route) {
       hide()
-      return
+      return false
     }
 
     port.postMessage({
@@ -104,6 +106,7 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
       selection
     })
     hide()
+    return true
   }
 
   const update = (): void => {
@@ -139,6 +142,14 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
     updateTimer = window.setTimeout(update, 20)
   }
 
+  const handleKeyDown = (event: KeyboardEvent): void => {
+    if (!isInsertSelectionShortcut(event) || !requestInsert()) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+  }
   const handlePointerDown = (event: PointerEvent): void => {
     if (button && event.target instanceof Node && button.contains(event.target)) {
       return
@@ -168,6 +179,7 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
   }
 
   document.addEventListener('selectionchange', handleSelectionChange)
+  window.addEventListener('keydown', handleKeyDown, true)
   window.addEventListener('pointerdown', handlePointerDown, true)
   window.addEventListener('pointerup', handlePointerUp, true)
   window.addEventListener('keyup', queueUpdate, true)
@@ -182,6 +194,7 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
         updateTimer = null
       }
       document.removeEventListener('selectionchange', handleSelectionChange)
+      window.removeEventListener('keydown', handleKeyDown, true)
       window.removeEventListener('pointerdown', handlePointerDown, true)
       window.removeEventListener('pointerup', handlePointerUp, true)
       window.removeEventListener('keyup', queueUpdate, true)
@@ -212,6 +225,10 @@ export function createProviderSelectionAction(port: MessagePort, adapter: Provid
     const result = adapter.readSelection()
     return result.kind === 'selection' ? result.selection : null
   }
+}
+
+function isInsertSelectionShortcut(event: KeyboardEvent): boolean {
+  return event.metaKey && event.shiftKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === 'i'
 }
 
 interface SelectionAnchorRect {

@@ -56,6 +56,7 @@ declare global {
       onSessionStateChanged: (handler: (state: SessionState) => void) => Unsubscribe
       onSessionTitleUpdated: (handler: (spark: SparkRow) => void) => Unsubscribe
       onSessionInsertSelectionRequested: (handler: (selection: AdapterCapturedSelection) => void) => Unsubscribe
+      onSessionToggleNoteRequested: (handler: () => void) => Unsubscribe
       onLoginRequired: (handler: (provider: string) => void) => Unsubscribe
       onToast: (handler: (message: ToastMessage) => void) => Unsubscribe
     }

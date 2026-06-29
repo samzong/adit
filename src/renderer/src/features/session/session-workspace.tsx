@@ -1,5 +1,5 @@
 import { Box, Flex, Stack } from '@chakra-ui/react'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { SessionState, ToastMessage } from '../../../../shared/types'
 import type { RunAction } from '../../app/types'
 import type { MarkdownDocumentEditorHandle } from '../../editor/markdown-document-editor'
@@ -31,12 +31,39 @@ export function SessionWorkspace({
   const noteEditorActive =
     workspaceSplit.notePanelInteractive && notePanel.mode === 'editor' && notePanel.currentNote !== null
 
+  const toggleNotePanel = useCallback((): void => {
+    if (notePanel.requestedOpen) {
+      notePanel.closePanel()
+      workspaceSplit.closeNoteLayout()
+      return
+    }
+
+    notePanel.openPanel()
+    workspaceSplit.openNoteLayout()
+  }, [notePanel, workspaceSplit])
+
   useEffect(() => {
     return window.adit.onSessionInsertSelectionRequested((selection) => {
       openNoteLayout()
       insertSelection(selection, (markdown) => noteEditorRef.current?.insertMarkdown(markdown) ?? false)
     })
   }, [insertSelection, openNoteLayout])
+
+  useEffect(() => window.adit.onSessionToggleNoteRequested(toggleNotePanel), [toggleNotePanel])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || !isToggleNoteShortcut(event)) {
+        return
+      }
+
+      event.preventDefault()
+      toggleNotePanel()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleNotePanel])
 
   useEffect(() => {
     void window.adit.setSessionSelectionActionAvailability({ enabled: noteEditorActive })
@@ -48,17 +75,6 @@ export function SessionWorkspace({
     },
     []
   )
-
-  const toggleNotePanel = (): void => {
-    if (notePanel.requestedOpen) {
-      notePanel.closePanel()
-      workspaceSplit.closeNoteLayout()
-      return
-    }
-
-    notePanel.openPanel()
-    workspaceSplit.openNoteLayout()
-  }
 
   return (
     <Flex direction="column" h="100vh" bg="bg" color="fg" overflow="hidden">
@@ -106,4 +122,8 @@ export function SessionWorkspace({
       </Box>
     </Flex>
   )
+}
+
+function isToggleNoteShortcut(event: KeyboardEvent): boolean {
+  return event.metaKey && event.shiftKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === 'n'
 }

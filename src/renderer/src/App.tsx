@@ -1,5 +1,5 @@
 import { Box, Flex, Stack } from '@chakra-ui/react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ProviderId, SessionState, ToastMessage } from '../../shared/types'
 import { FooterBar, SectionTabs, StandaloneNotice, TitleBar, Toolbar } from './app/shell'
 import type { Section } from './app/types'
@@ -10,6 +10,7 @@ import { LibraryToolbar } from './features/library/library-toolbar'
 import { useLibraryActions } from './features/library/use-library-actions'
 import { useLibraryItems } from './features/library/use-library-items'
 import { SessionWorkspace } from './features/session/session-workspace'
+import { providerDefs } from './features/sparks/provider'
 import { SparksContent } from './features/sparks/sparks-content'
 import { useSparks } from './features/sparks/use-sparks'
 import { StatusNotice } from './ui/status-notice'
@@ -65,6 +66,39 @@ function ElectronApp(): JSX.Element {
     },
     [runAction]
   )
+  const defaultProvider = providerDefs[0]?.id
+
+  useEffect(() => {
+    if (sessionState.mode !== 'list' || library.detail) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented) {
+        return
+      }
+
+      if (isCommandShortcut(event, '1')) {
+        event.preventDefault()
+        setSection('spark')
+        return
+      }
+
+      if (isCommandShortcut(event, '2')) {
+        event.preventDefault()
+        setSection('library')
+        return
+      }
+
+      if (section === 'spark' && defaultProvider && !busy && isCommandShortcut(event, 'n')) {
+        event.preventDefault()
+        createSession(defaultProvider)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [busy, createSession, defaultProvider, library.detail, section, sessionState.mode])
 
   if (sessionState.mode !== 'list') {
     return (
@@ -139,4 +173,8 @@ function ElectronApp(): JSX.Element {
       <FooterBar />
     </Flex>
   )
+}
+
+function isCommandShortcut(event: KeyboardEvent, key: string): boolean {
+  return event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === key
 }

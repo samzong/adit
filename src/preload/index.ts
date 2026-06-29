@@ -79,6 +79,8 @@ const api = {
     onChannel<SparkRow>(IPC.sessionTitleUpdated, handler),
   onSessionInsertSelectionRequested: (handler: (selection: AdapterCapturedSelection) => void): Unsubscribe =>
     onChannel<AdapterCapturedSelection>(IPC.sessionInsertSelectionRequested, handler),
+  onSessionToggleNoteRequested: (handler: () => void): Unsubscribe =>
+    onChannel<void>(IPC.sessionToggleNoteRequested, handler),
   onLoginRequired: (handler: (provider: string) => void): Unsubscribe =>
     onChannel<string>(IPC.sessionLoginRequired, handler),
   onToast: (handler: (message: ToastMessage) => void): Unsubscribe => onChannel<ToastMessage>(IPC.appToast, handler)

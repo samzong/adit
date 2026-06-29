@@ -263,9 +263,18 @@ export class SessionController {
       }
     }
     const onRenderProcessGone = (): void => this.bridge.onRenderProcessGone()
+    const onBeforeInput = (event: Electron.Event, input: Electron.Input): void => {
+      if (!isToggleNoteInput(input)) {
+        return
+      }
+
+      event.preventDefault()
+      this.sendToRenderer(IPC.sessionToggleNoteRequested)
+    }
 
     active.view.webContents.on('page-title-updated', onTitleUpdated)
     active.view.webContents.on('render-process-gone', onRenderProcessGone)
+    active.view.webContents.on('before-input-event', onBeforeInput)
     const unwatch = watchNavigation(active.view.webContents, active.provider, {
       onSessionUrl: (sessionUrl) => this.captureSessionUrl(active, sessionUrl),
       onLoginRequired: () => {
@@ -293,6 +302,7 @@ export class SessionController {
     return () => {
       active.view.webContents.off('page-title-updated', onTitleUpdated)
       active.view.webContents.off('render-process-gone', onRenderProcessGone)
+      active.view.webContents.off('before-input-event', onBeforeInput)
       unwatch()
     }
   }
@@ -359,6 +369,17 @@ export class SessionController {
       this.selectionActionRequested && this.workspaceLayout.noteOpen && !this.workspaceLayout.noteCollapsed
     )
   }
+}
+
+function isToggleNoteInput(input: Electron.Input): boolean {
+  return (
+    input.type === 'keyDown' &&
+    input.meta &&
+    input.shift &&
+    !input.control &&
+    !input.alt &&
+    input.key.toLowerCase() === 'n'
+  )
 }
 
 function formatError(reason: unknown): string {
