@@ -9,6 +9,11 @@ if (!actualTag) {
   process.exit(1)
 }
 
+if (!/^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)\.(0|[1-9][0-9]*))?$/.test(actualTag)) {
+  console.error(`Invalid release tag ${actualTag}. Use vX.Y.Z or vX.Y.Z-(alpha|beta|rc).N without leading zeros.`)
+  process.exit(1)
+}
+
 if (actualTag !== expectedTag) {
   console.error(`Release tag ${actualTag} does not match package.json version ${expectedTag}.`)
   process.exit(1)
