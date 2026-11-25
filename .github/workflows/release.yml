@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
 
 permissions:
   contents: read
@@ -66,7 +66,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:scripts && pnpm test
 
       - name: Build unsigned DMG
         run: pnpm dist:mac:arm64
@@ -87,6 +87,17 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prepare release notes
+        run: node scripts/prepare-release-notes.mjs > release-notes.md
+
       - name: Download DMG artifacts
         uses: actions/download-artifact@v4
         with:
@@ -99,7 +110,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
-            --title "Adit $TAG" \
-            --notes "Unsigned macOS build. If macOS Gatekeeper blocks direct launch, open the app from Finder with Open."
-          gh release upload "$TAG" release-artifacts/*.dmg --clobber
+          args=(--verify-tag --title "Adit $TAG" --notes-file release-notes.md)
+          if [[ "$TAG" == *-* ]]; then
+            args+=(--prerelease --latest=false)
+          fi
+          gh release create "$TAG" release-artifacts/*.dmg "${args[@]}"

@@ -5,67 +5,32 @@ description: Release Adit versions from the repo-local workflow. Use when the us
 
 # Adit Release
 
-Release Adit by treating `docs/RELEASE.md` as the live contract and the codebase as the source of truth. This skill is allowed to mutate only the release version bump, annotated tag, push, and release verification for the requested version.
+Use `docs/RELEASE.md` as the single release procedure and the codebase as the source of truth. This skill covers release preparation and verification. Publishing a tag and GitHub Release requires separate owner authorization.
 
 ## Preflight
 
-1. Read `docs/RELEASE.md` first.
-2. Confirm the requested version. If the user supplied `vX.Y.Z`, set `package.json` to `X.Y.Z`; if they asked for the next patch, use `pnpm version patch --no-git-tag-version`.
-3. Verify `origin` points at the expected GitHub repository and the current branch is `main`.
-4. Verify the worktree is clean and `HEAD` matches `origin/main`. Stop if there are unrelated local changes or the branch is not in sync.
-5. Verify the requested tag does not already exist locally or on `origin`.
+1. Read `docs/RELEASE.md` and the applicable `AGENTS.md` instructions.
+2. Confirm the requested stable or prerelease version. Use only the version forms defined in the release guide.
+3. Confirm that `origin` points to `samzong/adit` and the preparation worktree starts from the latest `origin/main`, with no unrelated changes.
+4. Confirm that the requested tag does not exist locally or on `origin`. Do not move, rename, delete, or reuse a published tag.
 
-Useful checks:
+## Prepare the release
 
-```bash
-git status --short --branch
-git remote -v
-git rev-parse --abbrev-ref HEAD
-git rev-parse HEAD origin/main
-git tag --list 'v*.*.*'
-git ls-remote --tags origin 'refs/tags/vX.Y.Z*'
-```
+Follow the guide's preparation steps in a task worktree. Update `package.json`, generate `CHANGELOG.md` with `pnpm release:changelog`, and review the matching version section and unsigned launch instructions with `node scripts/prepare-release-notes.mjs`.
 
-## Local Release
+Run every release gate in the guide, including the exact tag check, `pnpm check`, and the macOS DMG build. If any gate fails, stop publication and report the failure.
 
-Run the release steps in this order:
+Commit both `package.json` and `CHANGELOG.md` with sign-off through the repository's PR delivery loop. Complete review and CI, then merge the preparation PR before tagging. Do not push release preparation directly to `main`.
 
-```bash
-pnpm version X.Y.Z --no-git-tag-version
-pnpm release:check vX.Y.Z
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm dist:mac:arm64
-```
+## Publish an approved release
 
-After validation, inspect the diff. The expected committed change is the version bump, normally only `package.json`.
+Only after separate publication authorization, select the merged release commit on the current `origin/main`. Confirm that its package version and committed changelog match the approved tag, then follow the guide's publication steps.
 
-```bash
-git diff
-git status --short --branch
-```
+Use an annotated tag that points to that release commit. Push only the approved tag. Do not use `--follow-tags` or push unrelated tags.
 
-If validation fails, stop and report the failing command. Do not tag or push.
+## GitHub verification
 
-## Commit, Tag, Push
-
-Before committing, stage only the intended release version files and inspect the staged diff:
-
-```bash
-git add package.json
-git diff --cached
-git commit -s -m "chore(release): bump version to X.Y.Z"
-git tag -a vX.Y.Z -m "vX.Y.Z"
-git push origin main --follow-tags
-```
-
-Use an annotated tag. The tag must point at the release commit and match `package.json`.
-
-## GitHub Verification
-
-After push, verify the GitHub Actions Release workflow and the published release asset:
+After the approved tag push, inspect the Release workflow and its published asset:
 
 ```bash
 gh run list --repo samzong/adit --workflow Release --limit 5 --json databaseId,displayTitle,headBranch,headSha,status,conclusion,url
@@ -73,11 +38,12 @@ gh run watch RUN_ID --repo samzong/adit --exit-status --interval 10
 gh release view vX.Y.Z --repo samzong/adit --json tagName,name,isDraft,isPrerelease,url,assets
 ```
 
-Completion requires evidence that:
+Replace the version placeholder with the approved stable or prerelease tag. Completion requires:
 
-- the Release workflow completed with `conclusion: success`;
-- the GitHub Release is not a draft;
-- `Adit-X.Y.Z-arm64.dmg` exists as a release asset;
-- `git status --short --branch` is clean and aligned with `origin/main`.
+- the workflow completed with `conclusion: success` at the approved release commit;
+- the GitHub Release is not a draft and `isPrerelease` matches the approved release stage;
+- the release notes contain the matching English change entries and unsigned macOS launch instructions;
+- `Adit-<version>-arm64.dmg` exists as a release asset;
+- the preparation worktree is clean.
 
-Mention non-blocking workflow annotations separately from release failures.
+Report non-blocking workflow annotations separately from release failures.
