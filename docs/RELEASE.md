@@ -30,6 +30,8 @@ brew install git-cliff
    ```
 
 3. Read the generated version section. Make sure that it contains English change entries.
+   Each generated version section includes changes since the previous stable release.
+   Earlier candidate sections remain in their release commits and GitHub Releases.
 
 4. Run the release gates:
 
