@@ -1,3 +1,25 @@
+## [0.2.1] (2026-11-25)
+
+### Features
+
+- **preview:** add in-app external link preview (#9)
+- **library:** support image drag attachments (#10)
+- **install:** add pnpm install:app for local macOS install
+- **shortcuts:** add keyboard shortcuts for shell and session actions
+
+### Fixes
+
+- **library:** restore multi-type item support (#8)
+- **release:** enforce SemVer and publish changelog notes (#12)
+
+### Refactors
+
+- **library:** simplify to markdown-only and remove dead code (#7)
+
+### Documentation
+
+- **readme:** add screenshots, brew install, and library guide
+
 ## [0.2.0] (2026-06-24)
 
 ### Features
